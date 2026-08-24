@@ -1,0 +1,51 @@
+# ---------------------------------------------------------------- segredos
+# O .env guarda JWT_SECRET, senha do banco e chaves do storage.
+# NUNCA versione. O .env.example é o que vai para o repositório.
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+mosquitto/config/passwd
+mosquitto/config/acl
+mosquitto/config/certs/
+
+# ---------------------------------------------------------------- python
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# ---------------------------------------------------------------- dados
+# Volumes e arquivos gerados em tempo de execução.
+_evidencias/
+mosquitto/data/
+mosquitto/log/
+pgdata/
+miniodata/
+*.sqlite
+*.db
+
+# ---------------------------------------------------------------- editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ---------------------------------------------------------------- SO
+.DS_Store
+Thumbs.db
+desktop.ini

@@ -1,0 +1,26 @@
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+pydantic==2.10.4
+pydantic-settings==2.7.0
+email-validator==2.2.0
+
+# banco
+sqlalchemy==2.0.36
+asyncpg==0.30.0
+pgvector==0.3.6
+alembic==1.14.0
+greenlet==3.1.1
+
+# mqtt — aiomqtt é o antigo asyncio-mqtt: embrulha o paho com async/await,
+# bem mais limpo que usar callbacks do paho dentro de código assíncrono
+aiomqtt==2.3.0
+
+# auth
+pyjwt==2.10.1
+bcrypt==4.2.1
+
+# storage
+boto3==1.35.90
+
+# upload multipart
+python-multipart==0.0.20

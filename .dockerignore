@@ -1,0 +1,13 @@
+.venv
+__pycache__
+*.pyc
+*.pyo
+.git
+.gitignore
+.env
+_evidencias
+mosquitto/data
+mosquitto/log
+README.md
+docker-compose.yml
+Dockerfile

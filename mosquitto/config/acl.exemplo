@@ -1,0 +1,44 @@
+# ---------------------------------------------------------------------------
+# Modelo de ACL do Mosquitto.
+#
+# Para ativar: renomeie para `acl`, descomente `acl_file` em mosquitto.conf
+# e crie as senhas com mosquitto_passwd.
+#
+# O princípio: cada dispositivo só enxerga o próprio ponto de acesso. É por
+# isso que a convenção de tópicos coloca {site}/{ponto} ANTES da ação —
+# se a ação viesse primeiro, esta restrição seria impossível de escrever.
+# ---------------------------------------------------------------------------
+
+# Servidor: usuário único da aplicação, acesso amplo ao namespace.
+user backend
+topic readwrite epi/#
+
+
+# --------------------------------------------------------- planta01/portaria
+# Raspberry: lê o comando de captura, publica resultado e o próprio status.
+# Repare no que ela NÃO pode: publicar em cmd/liberar. A câmera não abre
+# catraca — a decisão é do servidor.
+user rasp-planta01-portaria
+topic read  epi/v1/planta01/portaria/cmd/capturar
+topic write epi/v1/planta01/portaria/evt/resultado
+topic write epi/v1/planta01/portaria/dev/rasp-planta01-portaria/status
+topic write epi/v1/planta01/portaria/dev/rasp-planta01-portaria/telemetria
+topic read  epi/v1/planta01/config/rasp-planta01-portaria
+
+# ESP32: lê só o comando de liberar, publica só a passagem e o status.
+# Não lê nada de resultado e não escreve nada de resultado — assim um
+# ESP32 comprometido não consegue forjar uma aprovação de EPI.
+user esp32-planta01-portaria
+topic read  epi/v1/planta01/portaria/cmd/liberar
+topic write epi/v1/planta01/portaria/evt/passagem
+topic write epi/v1/planta01/portaria/dev/esp32-planta01-portaria/status
+topic read  epi/v1/planta01/config/esp32-planta01-portaria
+
+
+# --------------------------------------------------------- planta01/almox
+# Ao adicionar um ponto de acesso novo, copie o bloco acima e troque o
+# nome do ponto. Nada muda no código do servidor.
+#
+# user rasp-planta01-almox
+# topic read  epi/v1/planta01/almox/cmd/capturar
+# ...

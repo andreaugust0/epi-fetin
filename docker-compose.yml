@@ -1,0 +1,144 @@
+services:
+  # ------------------------------------------------------------------ broker
+  broker:
+    image: eclipse-mosquitto:2
+    container_name: epi-broker
+    ports:
+      - "1883:1883"     # MQTT
+      - "9001:9001"     # WebSocket (útil para depurar do navegador)
+    volumes:
+      - ./mosquitto/config:/mosquitto/config:ro
+      - mosquitto_data:/mosquitto/data
+      - mosquitto_log:/mosquitto/log
+    healthcheck:
+      # Um publish de teste prova que o broker aceita conexão de verdade —
+      # bem melhor do que apenas checar se a porta está aberta.
+      test: ["CMD-SHELL", "mosquitto_pub -h localhost -t healthcheck -m ok -q 0 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    restart: unless-stopped
+
+  # -------------------------------------------------------------------- banco
+  db:
+    # A imagem oficial do pgvector já traz a extensão compilada. Usar
+    # postgres:16 puro obrigaria a compilar pgvector na mão.
+    image: pgvector/pgvector:pg16
+    container_name: epi-db
+    environment:
+      POSTGRES_DB: ${DB_NAME:-epi}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASS:-postgres}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-epi}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  # ------------------------------------------------------------------ storage
+  storage:
+    image: minio/minio:latest
+    container_name: epi-storage
+    command: server /data --console-address ":9090"
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY:-minioadmin}
+    ports:
+      - "9000:9000"     # API S3
+      - "9090:9090"     # console web
+    volumes:
+      - miniodata:/data
+    healthcheck:
+      test: ["CMD-SHELL", "mc ready local || exit 0"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # ------------------------------------------------------------- criar bucket
+  criar-bucket:
+    image: minio/mc:latest
+    container_name: epi-criar-bucket
+    depends_on:
+      storage:
+        condition: service_started
+    entrypoint: >
+      /bin/sh -c "
+      until mc alias set local http://storage:9000 ${S3_ACCESS_KEY:-minioadmin} ${S3_SECRET_KEY:-minioadmin}; do sleep 2; done;
+      mc mb --ignore-existing local/${S3_BUCKET:-evidencias};
+      echo 'bucket pronto';
+      "
+    restart: "no"
+
+  # ---------------------------------------------------------------- migrations
+  # Serviço de vida curta: cria a extensão vector, o schema e o seed.
+  # Roda ANTES da api e do worker (ambos dependem dele com
+  # condition: service_completed_successfully).
+  init:
+    build: .
+    container_name: epi-init
+    command: python -m scripts.init_db
+    env_file: .env
+    environment:
+      DB_HOST: db
+      MQTT_HOST: broker
+      S3_ENDPOINT: http://storage:9000
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  # ---------------------------------------------------------------------- api
+  api:
+    build: .
+    container_name: epi-api
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+    env_file: .env
+    environment:
+      DB_HOST: db
+      MQTT_HOST: broker
+      S3_ENDPOINT: http://storage:9000
+    ports:
+      - "8000:8000"
+    depends_on:
+      init:
+        condition: service_completed_successfully
+      broker:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ------------------------------------------------------------------- worker
+  # PROCESSO SEPARADO da api, de propósito. Se o cliente MQTT abrisse no
+  # lifespan do FastAPI, subir `uvicorn --workers 4` faria cada processo
+  # abrir a própria conexão: a mesma mensagem seria processada quatro vezes
+  # e a catraca liberada quatro vezes.
+  #
+  # Por isso este serviço NÃO deve ser escalado com `--scale worker=N` sem
+  # antes migrar para shared subscriptions do MQTT 5.
+  worker:
+    build: .
+    container_name: epi-worker
+    command: python -m app.mqtt.worker
+    env_file: .env
+    environment:
+      DB_HOST: db
+      MQTT_HOST: broker
+      S3_ENDPOINT: http://storage:9000
+    depends_on:
+      init:
+        condition: service_completed_successfully
+      broker:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  miniodata:
+  mosquitto_data:
+  mosquitto_log:
