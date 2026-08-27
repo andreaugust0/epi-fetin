@@ -1,8 +1,12 @@
+# Nome do projeto fixo. Sem isto o Compose usa o nome da PASTA, então
+# renomear a pasta cria um projeto novo — com volumes novos e vazios, e
+# conflito com os contêineres antigos que ainda seguram os nomes.
+name: epi-fetin
+
 services:
   # ------------------------------------------------------------------ broker
   broker:
     image: eclipse-mosquitto:2
-    container_name: epi-broker
     ports:
       - "1883:1883"     # MQTT
       - "9001:9001"     # WebSocket (útil para depurar do navegador)
@@ -25,7 +29,6 @@ services:
     # A imagem oficial do pgvector já traz a extensão compilada. Usar
     # postgres:16 puro obrigaria a compilar pgvector na mão.
     image: pgvector/pgvector:pg16
-    container_name: epi-db
     environment:
       POSTGRES_DB: ${DB_NAME:-epi}
       POSTGRES_USER: ${DB_USER:-postgres}
@@ -44,7 +47,6 @@ services:
   # ------------------------------------------------------------------ storage
   storage:
     image: minio/minio:latest
-    container_name: epi-storage
     command: server /data --console-address ":9090"
     environment:
       MINIO_ROOT_USER: ${S3_ACCESS_KEY:-minioadmin}
@@ -64,7 +66,6 @@ services:
   # ------------------------------------------------------------- criar bucket
   criar-bucket:
     image: minio/mc:latest
-    container_name: epi-criar-bucket
     depends_on:
       storage:
         condition: service_started
@@ -82,7 +83,6 @@ services:
   # condition: service_completed_successfully).
   init:
     build: .
-    container_name: epi-init
     command: python -m scripts.init_db
     env_file: .env
     environment:
@@ -97,7 +97,6 @@ services:
   # ---------------------------------------------------------------------- api
   api:
     build: .
-    container_name: epi-api
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000
     env_file: .env
     environment:
@@ -123,7 +122,6 @@ services:
   # antes migrar para shared subscriptions do MQTT 5.
   worker:
     build: .
-    container_name: epi-worker
     command: python -m app.mqtt.worker
     env_file: .env
     environment:
