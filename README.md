@@ -17,7 +17,7 @@ Só precisa de Docker instalado.
 make up
 ```
 
-Isso cria o `.env` com um `JWT_SECRET` aleatório e sobe cinco contêineres:
+Isso cria o `.env` com um `JWT_SECRET` aleatório e sobe os serviços:
 Mosquitto, PostgreSQL com pgvector, MinIO, a API e o worker. O schema e o
 seed são criados automaticamente pelo serviço `init`, que roda antes da API.
 
@@ -32,7 +32,9 @@ Comandos úteis:
 ```bash
 make logs     # acompanha api e worker
 make ver      # espia TODO o tráfego MQTT em tempo real
-make teste    # roda os dois scripts de teste dentro do contêiner
+make teste    # roda os testes dentro do contêiner
+make rasp     # simulador da Raspberry
+make esp      # simulador do ESP32
 make down     # derruba (mantém os dados)
 make reset    # derruba e apaga os volumes
 ```
@@ -145,19 +147,38 @@ cada mensagem a apenas um assinante do grupo.
 
 ---
 
-## Testes
+## Simuladores de dispositivo
 
-Ambos rodam contra Postgres e Mosquitto de verdade, não contra mocks.
+Dois scripts fazem o papel da Raspberry e do ESP32, para desenvolver e
+testar **sem hardware ligado**:
 
 ```bash
-python -m scripts.testar_biometria   # 11 checagens do serviço de biometria
-python -m scripts.testar_fluxo       # 19 checagens do fluxo ponta a ponta
+python -m simuladores.raspberry     # em um terminal
+python -m simuladores.esp32         # em outro
 ```
 
-O segundo simula a Raspberry e o ESP32 em memória e exercita o caminho
-completo: identificação facial → `cmd/capturar` → `evt/resultado` → decisão →
+Sem eles o servidor recusa verificações com `503 câmera do ponto está
+offline`, e quem estiver integrando o app vai achar que quebrou o próprio
+código. Detalhes, flags e controle por teclado em
+[`simuladores/README.md`](simuladores/README.md).
+
+## Testes
+
+Todos rodam contra Postgres e Mosquitto de verdade, não contra mocks.
+
+```bash
+python -m scripts.testar_biometria     # 11 checagens do serviço de biometria
+python -m scripts.testar_fluxo         # 19 checagens do fluxo ponta a ponta
+python -m scripts.testar_simuladores   # 13 checagens com os simuladores reais
+python -m scripts.testar_compat_app    # 13 checagens dos embeddings do app
+```
+
+`testar_fluxo` simula a borda em memória e exercita o caminho completo:
+identificação facial → `cmd/capturar` → `evt/resultado` → decisão →
 `cmd/liberar` → `evt/passagem`, mais reprovação, deduplicação de QoS 1,
-expiração e recusa por câmera offline.
+expiração e recusa por câmera offline. `testar_simuladores` faz o mesmo com
+os simuladores rodando como processos separados, do jeito que você vai
+usá-los no dia a dia.
 
 ---
 
@@ -335,9 +356,6 @@ Estes itens ficaram fora deste pacote e são os próximos passos naturais:
   o certo para desenvolver. As duas seções comentadas no fim do arquivo, mais
   o `acl.exemplo`, mostram como travar. Sem o ACL, um ESP32 comprometido
   consegue publicar resultado de EPI falso.
-- **Simuladores de Raspberry e ESP32 como scripts autônomos** — a lógica já
-  existe dentro de `scripts/testar_fluxo.py`; extrair rende dois utilitários
-  que valem para o projeto inteiro.
 - **Cliente do tablet** — captura, FaceNet, chamada ao `/identificacao`.
 - **Hub via Redis** — o `hub.py` atual é em memória e só alcança tablets
   conectados ao mesmo processo da API. Com mais de um worker web, troque o

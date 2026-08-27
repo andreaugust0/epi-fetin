@@ -199,17 +199,29 @@ async def preparar() -> tuple[int, int, str, str]:
         for _ in range(3):
             await svc_bio.cadastrar(db, pessoa_id, ruido(vetor(11)), MOD)
 
-        # Marca a Raspberry como online (normalmente o LWT faz isso)
-        rasp = (
-            await db.execute(
-                select(Dispositivo).where(
-                    Dispositivo.tipo == TipoDispositivo.RASPBERRY
-                )
-            )
-        ).scalars().first()
-        rasp.online = True
         await db.commit()
         return ponto.id, pessoa_id, site.codigo, ponto.codigo
+
+
+async def anunciar_presenca(site: str, ponto: str) -> None:
+    """Publica status retido pelos dois dispositivos, como eles fariam.
+
+    Escrever `online = True` direto no banco não funciona: se o broker
+    ainda tiver um status retido dizendo `offline` — de uma execução
+    anterior dos simuladores, por exemplo —, ele reentrega essa mensagem
+    assim que o worker assina, e o worker sobrescreve o banco de volta
+    para offline.
+
+    Isso é o retain fazendo exatamente o que deve. A correção é anunciar
+    presença pelo caminho de verdade, que também limpa o estado retido.
+    """
+    for device_id in ("rasp-planta01-portaria", "esp32-planta01-portaria"):
+        await publisher.publicar(
+            f"{topics.NS}/{topics.V}/{site}/{ponto}/dev/{device_id}/status",
+            StatusEvt(online=True, fw="1.4.2", modelo="yolov8n-epi-v3"),
+            qos=1,
+            retain=True,
+        )
 
 
 async def main() -> None:
@@ -230,13 +242,9 @@ async def main() -> None:
 
     # ------------------------------------------------- 1. presença via LWT
     print("\n1. presença de dispositivo via status retido")
+    await anunciar_presenca(site_cod, ponto_cod)
+    await asyncio.sleep(1.0)   # o worker precisa processar os dois status
     async with SessionLocal() as db:
-        await presenca.atualizar(
-            db,
-            "esp32-planta01-portaria",
-            StatusEvt(online=True, fw="1.4.2"),
-        )
-        await db.commit()
         esp = (
             await db.execute(
                 select(Dispositivo).where(
@@ -244,7 +252,15 @@ async def main() -> None:
                 )
             )
         ).scalar_one()
+        rasp = (
+            await db.execute(
+                select(Dispositivo).where(
+                    Dispositivo.client_id_mqtt == "rasp-planta01-portaria"
+                )
+            )
+        ).scalar_one()
         checar("ESP32 marcado online", esp.online and esp.firmware == "1.4.2")
+        checar("Raspberry marcada online", rasp.online)
 
     # ------------------------------------------- 2. caminho feliz completo
     print("\n2. fluxo completo com todos os EPIs presentes")

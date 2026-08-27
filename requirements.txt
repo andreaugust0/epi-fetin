@@ -24,3 +24,6 @@ boto3==1.35.90
 
 # upload multipart
 python-multipart==0.0.20
+
+# simuladores de dispositivo (paho síncrono, como numa Raspberry real)
+paho-mqtt==2.1.0
