@@ -6,8 +6,9 @@ import {
   type Dispositivo,
   type EpisFaltantes,
 } from '../api/cliente';
+import { mdiShieldCheck } from '@mdi/js';
 import { BarrasRanking, type ItemBarra } from '../componentes/BarrasRanking';
-import { Aviso, Metrica, Pastilha, formatarData } from '../componentes/basicos';
+import { Aviso, Icone, Metrica, Pastilha, formatarData } from '../componentes/basicos';
 
 const PERIODOS = [7, 30, 90];
 
@@ -68,10 +69,25 @@ export function Painel() {
 
   return (
     <>
+      <section className="hero">
+        <span className="medalha">
+          <Icone caminho={mdiShieldCheck} />
+        </span>
+        <div>
+          <p className="eyebrow">Área de acesso restrito</p>
+          <h1>Painel de conformidade</h1>
+          <p>
+            Verificação automatizada de equipamentos de proteção individual por
+            câmera inteligente, com identificação facial no terminal.
+          </p>
+        </div>
+      </section>
+
       <div className="cabecalho">
         <div>
-          <h1>Painel</h1>
-          <p className="subtitulo">Conformidade e estado dos dispositivos</p>
+          <p className="overline" style={{ margin: 0 }}>
+            Período analisado
+          </p>
         </div>
         <div className="filtros" style={{ marginBottom: 0 }}>
           {PERIODOS.map((d) => (

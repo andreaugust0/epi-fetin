@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
+import { mdiContentSaveOutline } from '@mdi/js';
 import { api, ErroApi, type Ponto, type TipoEpi } from '../api/cliente';
-import { Aviso, Pastilha } from '../componentes/basicos';
+import { Aviso, Icone, Pastilha } from '../componentes/basicos';
+import { epiDoCatalogo } from '../tema';
 
 export function Pontos() {
   const [pontos, setPontos] = useState<Ponto[]>([]);
@@ -60,10 +62,18 @@ export function Pontos() {
     }
   }
 
+  // Códigos que o servidor conhece mas o catálogo do app não. Mostrar isso
+  // é o antídoto para o descasamento silencioso: o item aparece com ícone
+  // genérico em vez de sumir da tela do totem sem ninguém notar.
+  const foraDoCatalogo = tipos.filter(
+    (t) => epiDoCatalogo(t.codigo).descricao === 'Não está no catálogo do app',
+  );
+
   return (
     <>
       <div className="cabecalho">
         <div>
+          <p className="eyebrow">Configuração</p>
           <h1>Pontos de acesso</h1>
           <p className="subtitulo">Quais EPIs cada ponto exige</p>
         </div>
@@ -78,6 +88,17 @@ export function Pontos() {
         comando de captura, e a decisão de aprovar continua sendo do servidor.
       </Aviso>
 
+      {foraDoCatalogo.length > 0 ? (
+        <Aviso tipo="atencao">
+          <b>
+            {foraDoCatalogo.map((t) => t.codigo).join(', ')}
+          </b>{' '}
+          {foraDoCatalogo.length === 1 ? 'existe' : 'existem'} no servidor mas não
+          no catálogo do app do totem. O app descarta em silêncio código que não
+          reconhece — alinhe os dois antes de exigir {foraDoCatalogo.length === 1 ? 'este item' : 'estes itens'}.
+        </Aviso>
+      ) : null}
+
       {pontos.length === 0 ? (
         <div className="cartao">
           <div className="vazio">Nenhum ponto de acesso cadastrado.</div>
@@ -87,65 +108,65 @@ export function Pontos() {
           const selecionados = rascunho[p.id] ?? [];
           const mudou = alterado(p);
           return (
-            <div className="cartao" key={p.id} style={{ marginBottom: 14 }}>
+            <div className="cartao" key={p.id} style={{ marginBottom: 16 }}>
               <div
                 style={{
                   display: 'flex',
                   justifyContent: 'space-between',
-                  alignItems: 'baseline',
+                  alignItems: 'flex-start',
                   gap: 16,
                   flexWrap: 'wrap',
-                  marginBottom: 14,
+                  marginBottom: 18,
                 }}
               >
                 <div>
-                  <b style={{ fontSize: '1.02rem' }}>{p.nome}</b>{' '}
-                  <span className="mono" style={{ color: 'var(--ink-3)' }}>
-                    {p.site_codigo}/{p.codigo}
-                  </span>
-                  <div style={{ marginTop: 6 }}>
+                  <div
+                    style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}
+                  >
+                    <b style={{ fontSize: 17, fontWeight: 700 }}>{p.nome}</b>
                     <Pastilha estado={p.ativo ? 'ok' : 'neutro'}>
                       {p.ativo ? 'Ativo' : 'Inativo'}
                     </Pastilha>
                   </div>
+                  <span className="mono">
+                    {p.site_codigo}/{p.codigo}
+                  </span>
                 </div>
                 <button
                   className="primario"
                   onClick={() => void salvar(p)}
                   disabled={!mudou || salvando === p.id}
                 >
+                  <Icone caminho={mdiContentSaveOutline} />
                   {salvando === p.id ? 'Salvando…' : mudou ? 'Salvar' : 'Salvo'}
                 </button>
               </div>
 
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <p className="overline">
+                {selecionados.length} de {tipos.length} equipamentos exigidos neste ponto
+              </p>
+
+              <div className="grade-epi">
                 {tipos.map((t) => {
                   const marcado = selecionados.includes(t.codigo);
+                  const cat = epiDoCatalogo(t.codigo);
                   return (
                     <label
                       key={t.id}
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 7,
-                        padding: '7px 12px',
-                        border: `1px solid ${marcado ? 'var(--accent)' : 'var(--line)'}`,
-                        background: marcado ? 'var(--accent-soft)' : 'var(--surface)',
-                        borderRadius: 'var(--raio)',
-                        cursor: 'pointer',
-                        fontSize: '0.88rem',
-                        fontWeight: marcado ? 600 : 400,
-                      }}
+                      className={`item-epi${marcado ? ' marcado' : ''}`}
                     >
                       <input
                         type="checkbox"
                         checked={marcado}
                         onChange={() => alternar(p.id, t.codigo)}
-                        style={{ minWidth: 0, width: 14, height: 14 }}
                       />
-                      {t.rotulo}
-                      <span className="mono" style={{ color: 'var(--ink-3)', fontSize: '0.74rem' }}>
-                        {t.codigo}
+                      <span className="icone">
+                        <Icone caminho={cat.icone} />
+                      </span>
+                      <span className="texto">
+                        <span className="nome">{cat.rotulo}</span>
+                        <span className="desc">{cat.descricao}</span>
+                        <span className="codigo">{t.codigo}</span>
                       </span>
                     </label>
                   );
@@ -153,7 +174,14 @@ export function Pontos() {
               </div>
 
               {selecionados.length === 0 ? (
-                <p style={{ color: 'var(--alert)', fontSize: '0.86rem', marginBottom: 0 }}>
+                <p
+                  style={{
+                    color: 'var(--alerta-text)',
+                    fontSize: 13,
+                    marginBottom: 0,
+                    marginTop: 14,
+                  }}
+                >
                   Sem nenhum EPI exigido, o servidor recusa abrir verificações neste ponto.
                 </p>
               ) : null}
@@ -161,12 +189,6 @@ export function Pontos() {
           );
         })
       )}
-
-      <Aviso>
-        O <b>código</b> ao lado de cada EPI é o que trafega no MQTT. Ele precisa
-        bater exatamente com o identificador que o app e a Raspberry usam —
-        item com código desconhecido é descartado em silêncio do outro lado.
-      </Aviso>
     </>
   );
 }

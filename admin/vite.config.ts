@@ -19,6 +19,11 @@ export default defineConfig(({ mode }) => {
           target: env.VITE_API_ALVO || 'http://localhost:8000',
           changeOrigin: true,
         },
+        // A barra de status consulta /health, que fica fora de /api.
+        '/health': {
+          target: env.VITE_API_ALVO || 'http://localhost:8000',
+          changeOrigin: true,
+        },
       },
     },
   };

@@ -69,6 +69,7 @@ export function Verificacoes() {
     <>
       <div className="cabecalho">
         <div>
+          <p className="eyebrow">Auditoria</p>
           <h1>Verificações</h1>
           <p className="subtitulo">
             Histórico completo — {total} registro{total === 1 ? '' : 's'}
@@ -134,7 +135,7 @@ export function Verificacoes() {
                   <Fragment key={v.id}>
                     <tr>
                       <td>{formatarData(v.iniciada_em)}</td>
-                      <td>{v.pessoa_nome ?? <span style={{ color: 'var(--ink-3)' }}>não identificada</span>}</td>
+                      <td>{v.pessoa_nome ?? <span style={{ color: 'var(--slate-400)' }}>não identificada</span>}</td>
                       <td>
                         <Pastilha estado={est.estado}>{est.texto}</Pastilha>
                       </td>
@@ -153,16 +154,16 @@ export function Verificacoes() {
                     </tr>
                     {expandida ? (
                       <tr>
-                        <td colSpan={7} style={{ background: 'var(--surface-3)' }}>
+                        <td colSpan={7} style={{ background: 'var(--slate-50)' }}>
                           <div style={{ padding: '4px 0 8px' }}>
                             <div
                               className="mono"
-                              style={{ color: 'var(--ink-3)', marginBottom: 10 }}
+                              style={{ color: 'var(--slate-400)', marginBottom: 10 }}
                             >
                               {v.id}
                             </div>
                             {v.deteccoes.length === 0 ? (
-                              <span style={{ color: 'var(--ink-3)' }}>
+                              <span style={{ color: 'var(--slate-400)' }}>
                                 Nenhuma detecção registrada — a borda não respondeu.
                               </span>
                             ) : (
@@ -193,7 +194,7 @@ export function Verificacoes() {
         <button onClick={() => setPagina((p) => Math.max(0, p - 1))} disabled={pagina === 0}>
           Anterior
         </button>
-        <span style={{ alignSelf: 'center', fontSize: '0.86rem', color: 'var(--ink-2)' }}>
+        <span style={{ alignSelf: 'center', fontSize: 13, color: 'var(--slate-500)' }}>
           página {pagina + 1} de {ultimaPagina + 1}
         </span>
         <button

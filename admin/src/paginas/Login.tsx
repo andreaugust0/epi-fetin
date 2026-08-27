@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
+import { mdiLoginVariant } from '@mdi/js';
 import { useSessao } from '../auth/contexto';
-import { Aviso, Campo } from '../componentes/basicos';
+import { Aviso, Campo, Icone, ICONE_MARCA } from '../componentes/basicos';
 import { ErroApi } from '../api/cliente';
 
 export function Login() {
@@ -26,8 +27,15 @@ export function Login() {
   return (
     <div className="login-tela">
       <form className="login-caixa" onSubmit={aoEnviar}>
-        <h1>EPI Guard</h1>
-        <p className="subtitulo">Painel administrativo</p>
+        <div className="login-marca">
+          <span className="selo">
+            <Icone caminho={ICONE_MARCA} />
+          </span>
+          <div>
+            <h1>EPI Fetin</h1>
+            <p className="subtitulo">Painel administrativo</p>
+          </div>
+        </div>
 
         {erro ? <Aviso tipo="erro">{erro}</Aviso> : null}
 
@@ -50,7 +58,8 @@ export function Login() {
             required
           />
         </Campo>
-        <button className="primario" type="submit" disabled={enviando}>
+        <button className="primario largo" type="submit" disabled={enviando}>
+          <Icone caminho={mdiLoginVariant} />
           {enviando ? 'Entrando…' : 'Entrar'}
         </button>
       </form>

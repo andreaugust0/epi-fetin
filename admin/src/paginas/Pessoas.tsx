@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { api, ErroApi, type Pessoa } from '../api/cliente';
-import { Aviso, Campo, Pastilha } from '../componentes/basicos';
+import { mdiAccountPlusOutline, mdiClose } from '@mdi/js';
+import { Aviso, Campo, Icone, Pastilha } from '../componentes/basicos';
 
 const POR_PAGINA = 25;
 const VERSAO_TERMO = '1.0';
@@ -87,6 +88,7 @@ export function Pessoas() {
     <>
       <div className="cabecalho">
         <div>
+          <p className="eyebrow">Cadastro</p>
           <h1>Pessoas</h1>
           <p className="subtitulo">
             {total} cadastrada{total === 1 ? '' : 's'} ·{' '}
@@ -94,6 +96,7 @@ export function Pessoas() {
           </p>
         </div>
         <button className="primario" onClick={() => setNovaAberta((v) => !v)}>
+          <Icone caminho={novaAberta ? mdiClose : mdiAccountPlusOutline} />
           {novaAberta ? 'Cancelar' : 'Nova pessoa'}
         </button>
       </div>
@@ -225,7 +228,7 @@ export function Pessoas() {
         <button onClick={() => setPagina((p) => Math.max(0, p - 1))} disabled={pagina === 0}>
           Anterior
         </button>
-        <span style={{ alignSelf: 'center', fontSize: '0.86rem', color: 'var(--ink-2)' }}>
+        <span style={{ alignSelf: 'center', fontSize: 13, color: 'var(--slate-500)' }}>
           página {pagina + 1} de {ultimaPagina + 1}
         </span>
         <button

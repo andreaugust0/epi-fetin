@@ -70,7 +70,7 @@ pagina.on('requestfailed', (r) => {
 try {
   console.log('\n1. login');
   await pagina.goto(BASE, { waitUntil: 'networkidle' });
-  checar('tela de login aparece', await pagina.getByRole('heading', { name: 'EPI Guard' }).isVisible());
+  checar('tela de login aparece', await pagina.getByRole('heading', { name: 'EPI Fetin' }).isVisible());
 
   await pagina.getByLabel('E-mail').fill(EMAIL);
   await pagina.getByLabel('Senha').fill('errada');
@@ -154,9 +154,21 @@ try {
   const botaoSalvar = pagina.getByRole('button', { name: /Salvo|Salvar/ }).first();
   checar('salvar começa desabilitado (nada mudou)', await botaoSalvar.isDisabled());
 
-  await pagina.getByText('Luvas', { exact: false }).first().click();
+  checar(
+    'painel avisa sobre codigo fora do catalogo do app',
+    (await pagina.textContent('body')).includes('não\u00A0no catálogo')
+      || /não .{0,3}no catálogo do app/.test(await pagina.textContent('body')),
+    '(seed usa luva/bota, app usa luvas/botas)',
+  );
+
+  const primeiroEpi = pagina.locator('.item-epi').first();
+  await primeiroEpi.click();
   await pagina.waitForTimeout(300);
   checar('marcar um EPI habilita o salvar', await botaoSalvar.isEnabled());
+  checar(
+    'o cartao do EPI fica marcado visualmente',
+    (await primeiroEpi.getAttribute('class'))?.includes('marcado') ?? false,
+  );
 
   await botaoSalvar.click();
   await pagina.waitForTimeout(1500);
@@ -167,19 +179,30 @@ try {
   await pagina.screenshot({ path: `${SAIDA}/4-pontos.png`, fullPage: true });
 
   // devolve o ponto ao estado anterior
-  await pagina.getByText('Luvas', { exact: false }).first().click();
+  await primeiroEpi.click();
   await pagina.waitForTimeout(300);
   await botaoSalvar.click();
   await pagina.waitForTimeout(1200);
 
-  console.log('\n6. tema escuro');
+  console.log('\n6. barra de status do sistema');
+  await navegar(pagina, 'Painel');   // o hero só existe no painel
+  checar(
+    'barra superior mostra o sistema conectado',
+    await pagina.locator('.barra-status .conexao.on').isVisible(),
+    `("${(await pagina.locator('.barra-status .conexao').textContent())?.trim()}")`,
+  );
+  checar('hero azul do painel renderiza', await pagina.locator('.hero').first().isVisible());
+
+  console.log('\n7. tema');
+  // O app do totem tem um visual só, claro. O painel segue: preferência de
+  // tema escuro no sistema não pode descaracterizá-lo.
   await pagina.emulateMedia({ colorScheme: 'dark' });
   await navegar(pagina, 'Painel');
-  await pagina.screenshot({ path: `${SAIDA}/5-painel-escuro.png`, fullPage: true });
   const fundo = await pagina.evaluate(() => getComputedStyle(document.body).backgroundColor);
-  checar('tema escuro repinta o fundo', fundo !== 'rgb(241, 242, 238)', `(${fundo})`);
+  checar('tema unico se mantem sob preferencia escura', fundo === 'rgb(241, 245, 249)', `(${fundo})`);
+  await pagina.emulateMedia({ colorScheme: 'light' });
 
-  console.log('\n7. saúde geral');
+  console.log('\n8. saúde geral');
   checar(
     'nenhum erro no console do navegador',
     errosConsole.length === 0,

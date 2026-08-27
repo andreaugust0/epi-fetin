@@ -1,15 +1,20 @@
-# EPI Guard — painel administrativo
+# EPI Fetin — painel administrativo
 
-Aplicação web que consome a API do servidor EPI Guard. Substitui o admin da
+Aplicação web que consome a API do servidor EPI Fetin. Substitui o admin da
 branch `main` do app do totem, que guardava tudo no `localStorage`.
 
 React 19 · TypeScript · Vite · sem biblioteca de UI, sem biblioteca de gráfico
+
+**Usa o mesmo sistema de design do app do totem.** Os tokens em `src/tema.ts`
+e `src/styles.css` são cópia valor a valor de `src/theme/` do app
+(`colors.ts`, `radii.ts`, `spacing.ts`, `typography.ts`, `shadows.ts`).
+Ao mudar algo lá, mude aqui.
 
 ---
 
 ## Como rodar
 
-O **servidor precisa estar no ar** (`make up` no projeto `epi-server`).
+O **servidor precisa estar no ar** (`make up` ou `.\setup.ps1` em `servidor/`).
 
 ```bash
 npm install
@@ -29,7 +34,7 @@ máquina, mude `VITE_API_ALVO` no `.env`.
 | `npm run dev` | servidor de desenvolvimento com proxy |
 | `npm run build` | build de produção em `dist/` |
 | `npm run tipos` | **regenera os tipos a partir do OpenAPI do servidor** |
-| `node verificar.mjs` | percorre o painel num navegador real (20 checagens) |
+| `node verificar.mjs` | percorre o painel num navegador real (24 checagens) |
 
 ---
 
@@ -95,8 +100,26 @@ o resto numa linha "outros (N)", em vez de cortar e parecer completo.
 ela informa quantos vetores serão apagados e que a LGPD exige a eliminação —
 não há como desfazer.
 
-**Tema claro e escuro.** Ambos escolhidos, não invertidos automaticamente.
-Acompanha a preferência do sistema.
+**Tema único e claro**, como o app do totem. Não é omissão: o app
+compromete-se com um visual só, e um painel que trocasse de cor sozinho
+destoaria dele na mesma sala.
+
+**Ícones idênticos aos do totem.** O app usa MaterialCommunityIcons via
+`@expo/vector-icons`; aqui usamos `@mdi/js`, que é a mesma família — então
+`hard-hat`, `tshirt-crew`, `safety-goggles`, `shoe-formal`, `headphones`,
+`face-mask` e `hand-back-right` desenham exatamente o mesmo traço nas duas
+telas.
+
+**A barra de status superior é funcional, não decorativa.** No totem ela diz
+se o terminal está conectado; aqui ela consulta `/health` a cada dez segundos
+e diz se a API e o broker estão de pé. Quando o painel parar de carregar,
+ela responde na hora se o problema é o servidor ou a tela.
+
+**Código de EPI fora do catálogo aparece destacado.** Se o servidor conhece
+um código que o app do totem não reconhece — hoje `luva` e `bota`, contra
+`luvas` e `botas` do app —, o painel mostra um aviso e desenha o item com
+ícone genérico. O app descarta em silêncio o que não reconhece; esta tela é
+onde esse descasamento fica visível antes de virar bug em campo.
 
 ---
 
@@ -108,8 +131,9 @@ node verificar.mjs
 
 Sobe um navegador de verdade, faz login (inclusive testando senha errada),
 percorre as quatro telas, cria uma pessoa, registra consentimento, altera a
-política de EPIs de um ponto e confere que o tema escuro repinta. Falha se
-qualquer erro de JavaScript ou resposta 5xx aparecer.
+política de EPIs de um ponto, confere a barra de status e o hero, e verifica
+que o tema único resiste à preferência escura do sistema. Falha se qualquer
+erro de JavaScript ou resposta 5xx aparecer.
 
 Capturas ficam em `/tmp/capturas`.
 
@@ -131,10 +155,12 @@ src/
 │   └── cliente.ts        fetch + JWT + tradução de erro do FastAPI
 ├── auth/                 sessão; o 401 derruba o login de qualquer lugar
 ├── componentes/
-│   ├── basicos.tsx       pastilha, métrica, aviso, campo
+│   ├── basicos.tsx       pastilha, métrica, aviso, campo, ícone
+│   ├── BarraStatus.tsx   barra superior com estado de API e broker
 │   └── BarrasRanking.tsx gráfico em SVG, sem dependência externa
 ├── paginas/              Login, Painel, Verificações, Pessoas, Pontos
-└── styles.css            tokens de cor e tema, claro e escuro
+├── tema.ts               catálogo de EPI e ícones, espelhado do app
+└── styles.css            tokens copiados de src/theme/ do app do totem
 ```
 
 O gráfico é SVG escrito à mão de propósito: um ranking horizontal não

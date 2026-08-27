@@ -10,6 +10,7 @@
     "tipos": "npx --yes openapi-typescript@7 http://localhost:8000/openapi.json -o src/api/servidor.d.ts"
   },
   "dependencies": {
+    "@mdi/js": "^7.4.47",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-router-dom": "^7.18.2"

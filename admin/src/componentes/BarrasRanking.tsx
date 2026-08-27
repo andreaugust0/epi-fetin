@@ -17,9 +17,9 @@ interface Props {
   maximo?: number;
 }
 
-const ALTURA_LINHA = 30;
+const ALTURA_LINHA = 34;
 const ESPACO = 2; // gap de superfície entre barras adjacentes
-const RAIO = 4; // arredondamento só na ponta de dados
+const RAIO = 6; // arredondamento só na ponta de dados (radii.sm do app)
 const LARGURA_ROTULO = 132;
 const MARGEM_DIREITA = 96;
 
@@ -166,11 +166,11 @@ export function BarrasRanking({ itens, titulo, unidade = '', maximo = 8 }: Props
           role="status"
           style={{
             marginTop: 8,
-            fontSize: '0.82rem',
-            color: 'var(--ink-2)',
+            fontSize: 13,
+            color: 'var(--slate-500)',
           }}
         >
-          <b style={{ color: 'var(--ink)' }}>{visiveis[ativo].rotulo}</b>
+          <b style={{ color: 'var(--slate-900)' }}>{visiveis[ativo].rotulo}</b>
           {' — '}
           {visiveis[ativo].detalhe}
         </div>
