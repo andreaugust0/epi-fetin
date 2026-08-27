@@ -132,7 +132,77 @@ class PontoOut(ORMModel):
     codigo: str
     nome: str
     ativo: bool
+    site_codigo: str = ""
     epis_exigidos: list[str] = []
+
+
+class PontoIn(BaseModel):
+    site_id: int
+    codigo: str = Field(min_length=1, max_length=40)
+    nome: str = Field(min_length=1)
+    ativo: bool = True
+
+
+class PontoPatch(BaseModel):
+    nome: str | None = None
+    ativo: bool | None = None
+
+
+class EpisExigidosIn(BaseModel):
+    """Lista COMPLETA de códigos exigidos; substitui a anterior."""
+
+    codigos: list[str] = Field(min_length=0, max_length=30)
+
+
+class TipoEpiOut(ORMModel):
+    id: int
+    codigo: str
+    rotulo: str
+    classe_modelo: str
+
+
+class TipoEpiIn(BaseModel):
+    codigo: str = Field(min_length=1, max_length=40,
+                        description="o que trafega no MQTT; precisa bater com "
+                                    "o identificador usado no app e na borda")
+    rotulo: str = Field(min_length=1)
+    classe_modelo: str = Field(min_length=1, max_length=60,
+                               description="nome da classe na saída do modelo")
+
+
+# ------------------------------------------------------------------ pessoas
+class PessoaIn(BaseModel):
+    matricula: str = Field(min_length=1, max_length=40)
+    nome: str = Field(min_length=1)
+    funcao: str | None = None
+    ativo: bool = True
+
+
+class PessoaPatch(BaseModel):
+    nome: str | None = None
+    funcao: str | None = None
+    ativo: bool | None = None
+
+
+class PessoaOut(BaseModel):
+    id: int
+    matricula: str
+    nome: str
+    funcao: str | None
+    ativo: bool
+    biometrias: int
+    consentimento_vigente: bool
+
+
+class PessoaDetalhe(PessoaOut):
+    criado_em: datetime
+    total_verificacoes: int
+    ultima_verificacao: datetime | None
+
+
+class PaginaPessoas(BaseModel):
+    total: int
+    itens: list[PessoaOut]
 
 
 class LiberacaoManualIn(BaseModel):

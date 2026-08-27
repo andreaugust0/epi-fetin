@@ -1,0 +1,533 @@
+/* ---------------------------------------------------------------------------
+   EPI Guard — painel administrativo
+
+   Mesma família visual dos documentos do projeto: neutro de concreto com
+   viés levemente esverdeado, âmbar industrial como acento. Aqui, porém, é
+   uma ferramenta e não um documento: mais denso, estado codificado em forma
+   além de cor, e tudo legível de relance.
+--------------------------------------------------------------------------- */
+
+:root {
+  color-scheme: light;
+
+  --ground: #f1f2ee;
+  --surface: #ffffff;
+  --surface-2: #e7e9e2;
+  --surface-3: #f7f8f5;
+  --ink: #1a1d19;
+  --ink-2: #5a6058;
+  --ink-3: #868c83;
+  --line: #c9cdc2;
+  --line-soft: #dcdfd6;
+
+  --accent: #b5811a;
+  --accent-soft: #f3e7c9;
+
+  /* Estado — reservados, nunca usados como "série 4" */
+  --ok: #1e7a4c;
+  --ok-soft: #dcede3;
+  --warn: #a8730f;
+  --warn-soft: #f6ead0;
+  --alert: #a93a22;
+  --alert-soft: #f4ded8;
+  --neutro: #5a6058;
+  --neutro-soft: #e7e9e2;
+
+  /* Série de dados (slot 1 da paleta categórica validada) */
+  --serie-1: #2a78d6;
+
+  --foco: #2a78d6;
+  --sombra: 0 1px 2px rgba(26, 29, 25, 0.06), 0 8px 24px -18px rgba(26, 29, 25, 0.3);
+  --raio: 3px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
+    --ground: #131612;
+    --surface: #1c201b;
+    --surface-2: #252a24;
+    --surface-3: #191d18;
+    --ink: #e9ece5;
+    --ink-2: #9aa396;
+    --ink-3: #7b8377;
+    --line: #343a32;
+    --line-soft: #282e27;
+    --accent: #e0ae49;
+    --accent-soft: #39300f;
+    --ok: #54c08b;
+    --ok-soft: #16301f;
+    --warn: #d9a441;
+    --warn-soft: #33280c;
+    --alert: #e58166;
+    --alert-soft: #3a1d14;
+    --neutro: #9aa396;
+    --neutro-soft: #252a24;
+    --serie-1: #3987e5;
+    --foco: #3987e5;
+    --sombra: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px -18px rgba(0, 0, 0, 0.7);
+  }
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --ground: #131612;
+  --surface: #1c201b;
+  --surface-2: #252a24;
+  --surface-3: #191d18;
+  --ink: #e9ece5;
+  --ink-2: #9aa396;
+  --ink-3: #7b8377;
+  --line: #343a32;
+  --line-soft: #282e27;
+  --accent: #e0ae49;
+  --accent-soft: #39300f;
+  --ok: #54c08b;
+  --ok-soft: #16301f;
+  --warn: #d9a441;
+  --warn-soft: #33280c;
+  --alert: #e58166;
+  --alert-soft: #3a1d14;
+  --neutro: #9aa396;
+  --neutro-soft: #252a24;
+  --serie-1: #3987e5;
+  --foco: #3987e5;
+  --sombra: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px -18px rgba(0, 0, 0, 0.7);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--ink);
+  font-family: Archivo, system-ui, -apple-system, sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+:focus-visible {
+  outline: 2px solid var(--foco);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* ------------------------------------------------------------------ layout */
+.app {
+  display: grid;
+  grid-template-columns: 232px 1fr;
+  min-height: 100vh;
+}
+
+.lateral {
+  background: var(--surface);
+  border-right: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  padding: 22px 16px;
+  gap: 26px;
+}
+
+.marca {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0 8px;
+}
+.marca b {
+  font-size: 1.02rem;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+}
+.marca span {
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.nav a {
+  display: block;
+  padding: 9px 12px;
+  border-radius: var(--raio);
+  color: var(--ink-2);
+  text-decoration: none;
+  font-size: 0.92rem;
+  font-weight: 500;
+}
+.nav a:hover {
+  background: var(--surface-2);
+  color: var(--ink);
+}
+.nav a.ativo {
+  background: var(--accent-soft);
+  color: var(--ink);
+  font-weight: 600;
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.rodape-lateral {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 0 8px;
+  font-size: 0.78rem;
+  color: var(--ink-3);
+}
+
+.conteudo {
+  padding: 30px 34px 60px;
+  max-width: 1180px;
+  min-width: 0;
+}
+
+.cabecalho {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin-bottom: 24px;
+}
+h1 {
+  font-size: 1.55rem;
+  font-weight: 700;
+  letter-spacing: -0.022em;
+  margin: 0;
+}
+.subtitulo {
+  color: var(--ink-2);
+  font-size: 0.92rem;
+  margin: 5px 0 0;
+}
+h2 {
+  font-size: 1.02rem;
+  font-weight: 600;
+  letter-spacing: -0.008em;
+  margin: 34px 0 12px;
+}
+
+/* ------------------------------------------------------------------ cartão */
+.cartao {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--raio);
+  padding: 20px 22px;
+}
+
+/* ------------------------------------------------------------- métricas */
+.metricas {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(178px, 1fr));
+  gap: 12px;
+}
+.metrica {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--raio);
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.metrica .rotulo {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+.metrica .valor {
+  font-size: 1.95rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+.metrica .nota {
+  font-size: 0.8rem;
+  color: var(--ink-3);
+}
+.metrica.destaque .valor {
+  color: var(--accent);
+}
+
+/* ------------------------------------------------------------- pastilhas */
+.pastilha {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  padding: 3px 9px;
+  border-radius: 2px;
+  white-space: nowrap;
+}
+/* O ponto codifica o estado em FORMA, não só em cor — quem não distingue
+   as cores ainda lê o rótulo, e o ponto dá a leitura de relance. */
+.pastilha .ponto {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  flex: none;
+}
+.pastilha.ok {
+  background: var(--ok-soft);
+  color: var(--ok);
+}
+.pastilha.alerta {
+  background: var(--alert-soft);
+  color: var(--alert);
+}
+.pastilha.aviso {
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+.pastilha.neutro {
+  background: var(--neutro-soft);
+  color: var(--neutro);
+}
+
+/* -------------------------------------------------------------- tabela */
+.rolagem {
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--raio);
+  background: var(--surface);
+}
+table {
+  border-collapse: collapse;
+  width: 100%;
+  min-width: 640px;
+  font-size: 0.88rem;
+}
+th,
+td {
+  padding: 10px 14px;
+  text-align: left;
+  border-bottom: 1px solid var(--line-soft);
+  vertical-align: middle;
+}
+thead th {
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+}
+tbody tr:last-child td {
+  border-bottom: none;
+}
+tbody tr:hover {
+  background: var(--surface-3);
+}
+.num {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.mono {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 0.8rem;
+}
+
+/* ------------------------------------------------------------ controles */
+.filtros {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  margin-bottom: 14px;
+}
+.campo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.campo label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+input,
+select {
+  font-family: inherit;
+  font-size: 0.9rem;
+  padding: 7px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--raio);
+  background: var(--surface);
+  color: var(--ink);
+  min-width: 150px;
+}
+input::placeholder {
+  color: var(--ink-3);
+}
+
+button {
+  font-family: inherit;
+  font-size: 0.88rem;
+  font-weight: 600;
+  padding: 8px 15px;
+  border-radius: var(--raio);
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+  cursor: pointer;
+}
+button:hover:not(:disabled) {
+  background: var(--surface-2);
+}
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+button.primario {
+  background: var(--ink);
+  color: var(--ground);
+  border-color: var(--ink);
+}
+button.primario:hover:not(:disabled) {
+  opacity: 0.88;
+  background: var(--ink);
+}
+button.perigo {
+  color: var(--alert);
+  border-color: var(--alert);
+  background: transparent;
+}
+button.perigo:hover:not(:disabled) {
+  background: var(--alert-soft);
+}
+button.pequeno {
+  padding: 4px 9px;
+  font-size: 0.78rem;
+}
+
+/* --------------------------------------------------------------- avisos */
+.aviso {
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--accent);
+  background: var(--surface);
+  border-radius: var(--raio);
+  padding: 12px 16px;
+  font-size: 0.88rem;
+  margin: 0 0 16px;
+}
+.aviso.erro {
+  border-left-color: var(--alert);
+  background: var(--alert-soft);
+  color: var(--alert);
+}
+.aviso.ok {
+  border-left-color: var(--ok);
+  background: var(--ok-soft);
+  color: var(--ok);
+}
+
+.vazio {
+  padding: 40px 20px;
+  text-align: center;
+  color: var(--ink-3);
+  font-size: 0.9rem;
+}
+
+/* --------------------------------------------------------------- gráfico */
+.gr-rotulo {
+  font-size: 0.82rem;
+  fill: var(--ink);
+}
+.gr-valor {
+  font-size: 0.78rem;
+  fill: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+}
+.gr-eixo {
+  stroke: var(--line-soft);
+  stroke-width: 1;
+}
+.gr-barra {
+  fill: var(--serie-1);
+}
+.gr-trilho {
+  fill: var(--surface-2);
+}
+
+/* ---------------------------------------------------------------- login */
+.login-tela {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+.login-caixa {
+  width: 100%;
+  max-width: 376px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--raio);
+  padding: 32px;
+  box-shadow: var(--sombra);
+}
+.login-caixa h1 {
+  font-size: 1.28rem;
+  margin: 0 0 4px;
+}
+.login-caixa .subtitulo {
+  margin-bottom: 22px;
+}
+.login-caixa .campo {
+  margin-bottom: 14px;
+}
+.login-caixa input {
+  width: 100%;
+}
+.login-caixa button {
+  width: 100%;
+  margin-top: 6px;
+}
+
+@media (max-width: 860px) {
+  .app {
+    grid-template-columns: 1fr;
+  }
+  .lateral {
+    border-right: none;
+    border-bottom: 1px solid var(--line);
+  }
+  .nav {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+  .rodape-lateral {
+    margin-top: 0;
+  }
+  .conteudo {
+    padding: 22px 18px 48px;
+  }
+}

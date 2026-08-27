@@ -34,12 +34,17 @@ async def listar_pontos(db: AsyncSession = DB) -> list[PontoOut]:
         selectinload(PontoAcesso.epis_exigidos)
     ).order_by(PontoAcesso.id)
     pontos = list((await db.execute(stmt)).scalars().unique().all())
+    sites = {
+        s.id: s.codigo
+        for s in (await db.execute(select(Site))).scalars().all()
+    }
     return [
         PontoOut(
             id=p.id,
             codigo=p.codigo,
             nome=p.nome,
             ativo=p.ativo,
+            site_codigo=sites.get(p.site_id, ""),
             epis_exigidos=[e.tipo_epi.codigo for e in p.epis_exigidos],
         )
         for p in pontos

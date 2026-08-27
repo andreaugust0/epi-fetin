@@ -90,7 +90,7 @@ async def semear() -> None:
         )
         db.add(
             UsuarioAdmin(
-                email="admin@local",
+                email="admin@epiguard.com.br",
                 nome="Administrador",
                 senha_hash=hash_senha("admin123"),
                 papel="admin",
@@ -98,7 +98,7 @@ async def semear() -> None:
         )
         await db.commit()
         print("dados de desenvolvimento criados")
-        print("  login: admin@local / admin123   (TROQUE ISTO)")
+        print("  login: admin@epiguard.com.br / admin123   (TROQUE ISTO)")
         print(f"  embedding dim: {settings.FACE_EMBEDDING_DIM}")
 
 
