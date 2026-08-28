@@ -172,21 +172,23 @@ class TipoEpiIn(BaseModel):
 
 # ------------------------------------------------------------------ pessoas
 class PessoaIn(BaseModel):
-    matricula: str = Field(min_length=1, max_length=40)
     nome: str = Field(min_length=1)
     funcao: str | None = None
+    #: Opcional — nem toda operação usa matrícula.
+    matricula: str | None = Field(default=None, max_length=40)
     ativo: bool = True
 
 
 class PessoaPatch(BaseModel):
     nome: str | None = None
     funcao: str | None = None
+    matricula: str | None = None
     ativo: bool | None = None
 
 
 class PessoaOut(BaseModel):
     id: int
-    matricula: str
+    matricula: str | None
     nome: str
     funcao: str | None
     ativo: bool

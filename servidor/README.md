@@ -167,6 +167,7 @@ código. Detalhes, flags e controle por teclado em
 Todos rodam contra Postgres e Mosquitto de verdade, não contra mocks.
 
 ```bash
+python -m scripts.testar_api_admin     # 25 checagens da API do painel
 python -m scripts.testar_biometria     # 11 checagens do serviço de biometria
 python -m scripts.testar_fluxo         # 19 checagens do fluxo ponta a ponta
 python -m scripts.testar_simuladores   # 13 checagens com os simuladores reais
@@ -343,6 +344,21 @@ uma resposta assíncrona vinda da borda. O tablet recebe o id e aguarda o
 desfecho no WebSocket. Fazer o endpoint bloquear até a Raspberry responder
 acoplaria um request HTTP à latência da inferência e derrubaria tudo quando a
 Pi travasse.
+
+---
+
+## Banco que já existe
+
+`init_db.py` só semeia banco vazio. Para aplicar mudanças de schema e de
+catálogo a um banco com dados:
+
+```bash
+python -m scripts.migrar_dados
+```
+
+É idempotente. Hoje ele torna `pessoas.matricula` anulável e alinha o
+catálogo aos sete EPIs do app do totem (`luva`→`luvas`, `bota`→`botas`,
+mais `mascara` e `auricular`).
 
 ---
 

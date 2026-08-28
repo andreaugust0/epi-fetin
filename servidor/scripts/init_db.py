@@ -26,12 +26,17 @@ from app.db.models import (
 )
 from app.db.session import SessionLocal, engine
 
+# Os sete equipamentos do catálogo do app do totem, com os MESMOS códigos.
+# O app descarta em silêncio item cujo código não reconhece, então divergir
+# aqui produz verificação que "funciona" com item faltando na tela.
 EPIS = [
     ("capacete", "Capacete", "helmet"),
-    ("oculos", "Óculos de proteção", "goggles"),
-    ("colete", "Colete refletivo", "vest"),
-    ("luva", "Luvas", "gloves"),
-    ("bota", "Botas de segurança", "boots"),
+    ("colete", "Colete", "vest"),
+    ("oculos", "Óculos", "goggles"),
+    ("botas", "Botas", "boots"),
+    ("auricular", "Protetor Auricular", "earmuffs"),
+    ("mascara", "Máscara", "mask"),
+    ("luvas", "Luvas", "gloves"),
 ]
 
 

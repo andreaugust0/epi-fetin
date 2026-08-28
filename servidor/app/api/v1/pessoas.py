@@ -62,6 +62,8 @@ async def listar(
     filtros = []
     if busca:
         alvo = f"%{busca.strip()}%"
+        # ilike em coluna NULL devolve NULL, que o WHERE trata como falso —
+        # então quem não tem matrícula continua achável pelo nome.
         filtros.append(Pessoa.nome.ilike(alvo) | Pessoa.matricula.ilike(alvo))
     if ativo is not None:
         filtros.append(Pessoa.ativo.is_(ativo))
@@ -97,16 +99,20 @@ async def criar(
     usuario: UsuarioAdmin = Depends(admin_atual),
     db: AsyncSession = DB,
 ) -> PessoaOut:
-    ja_existe = (
-        await db.execute(
-            select(Pessoa).where(Pessoa.matricula == dados.matricula)
-        )
-    ).scalar_one_or_none()
-    if ja_existe:
-        raise HTTPException(
-            status.HTTP_409_CONFLICT,
-            f"já existe alguém com a matrícula {dados.matricula}",
-        )
+    # A matrícula é opcional; só checamos duplicata quando ela foi informada.
+    # No Postgres, UNIQUE aceita vários NULL, então quem não tem matrícula
+    # não colide com ninguém.
+    if dados.matricula:
+        ja_existe = (
+            await db.execute(
+                select(Pessoa).where(Pessoa.matricula == dados.matricula)
+            )
+        ).scalar_one_or_none()
+        if ja_existe:
+            raise HTTPException(
+                status.HTTP_409_CONFLICT,
+                f"já existe alguém com a matrícula {dados.matricula}",
+            )
 
     p = Pessoa(**dados.model_dump())
     db.add(p)

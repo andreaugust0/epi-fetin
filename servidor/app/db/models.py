@@ -132,7 +132,12 @@ class Pessoa(Base):
     __tablename__ = "pessoas"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    matricula: Mapped[str] = mapped_column(String(40), unique=True)
+    # Opcional: nem toda operação tem matrícula. Continua UNIQUE — no
+    # Postgres, UNIQUE permite vários NULL, então a restrição só vale para
+    # quem de fato tem uma.
+    matricula: Mapped[str | None] = mapped_column(
+        String(40), unique=True, nullable=True
+    )
     nome: Mapped[str] = mapped_column(Text)
     funcao: Mapped[str | None] = mapped_column(Text, nullable=True)
     ativo: Mapped[bool] = mapped_column(Boolean, default=True)
