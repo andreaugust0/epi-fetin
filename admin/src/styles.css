@@ -156,11 +156,21 @@ body {
 /* ============================================================= layout ==== */
 .app {
   display: grid;
-  grid-template-columns: 244px 1fr;
+  grid-template-columns: 244px minmax(0, 1fr);
   min-height: calc(100vh - 28px);
+  align-items: start;
 }
-
+/* Sticky com altura da janela: a lateral acompanha a rolagem e rola
+   sozinha se a navegação crescer, em vez de esticar junto com uma tabela
+   longa. */
 .lateral {
+  position: sticky;
+  top: 0;
+  /* height, não max-height: com align-items:start no grid a lateral teria
+     só a altura do próprio conteúdo, e o fundo cinza apareceria abaixo
+     dela. */
+  height: calc(100vh - 28px);
+  overflow-y: auto;
   background: var(--superficie);
   border-right: 1px solid var(--linha);
   display: flex;
@@ -244,9 +254,10 @@ body {
 }
 
 .conteudo {
-  padding: 26px 30px 64px;
-  max-width: 1200px;
+  padding: 26px 34px 64px;
   min-width: 0;
+  /* Sem teto de largura: a tela é operada em monitor, e cortar em 1200px
+     deixava um vazio à direita enquanto as tabelas rolavam na horizontal. */
 }
 
 /* ============================================================= textos ==== */
@@ -384,7 +395,7 @@ h2 {
 /* =========================================================== métricas ==== */
 .metricas {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
   gap: 14px;
 }
 .metrica {
@@ -613,8 +624,11 @@ button.largo {
   font-size: 15px;
 }
 
-/* ============================================================ avisos ===== */
-.aviso {
+/* ============================================================ faixas ===== */
+/* Nome próprio, não "aviso": `aviso` também é um estado de pastilha, e as
+   duas regras acabavam se aplicando ao mesmo elemento — a pastilha herdava
+   o padding e o display de banner. */
+.faixa {
   border-radius: var(--r-lg);
   padding: 13px 16px;
   font-size: 14px;
@@ -626,22 +640,22 @@ button.largo {
   background: var(--primary-soft);
   color: var(--primary-deep);
 }
-.aviso svg {
+.faixa svg {
   width: 18px;
   height: 18px;
   fill: currentColor;
   flex: none;
   margin-top: 1px;
 }
-.aviso.erro {
+.faixa.erro {
   background: var(--alerta-soft);
   color: var(--alerta-text);
 }
-.aviso.ok {
+.faixa.ok {
   background: var(--ok-soft);
   color: var(--ok-text);
 }
-.aviso.atencao {
+.faixa.atencao {
   background: var(--aviso-soft);
   color: var(--aviso-text);
 }
@@ -731,6 +745,9 @@ button.largo {
 }
 
 /* =========================================================== gráfico ===== */
+.grafico-caixa {
+  max-width: 900px;
+}
 .gr-rotulo {
   font-size: 13px;
   font-weight: 600;

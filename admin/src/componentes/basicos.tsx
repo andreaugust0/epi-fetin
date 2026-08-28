@@ -73,7 +73,7 @@ export function Aviso({
 }) {
   return (
     <div
-      className={tipo === 'info' ? 'aviso' : `aviso ${tipo}`}
+      className={tipo === 'info' ? 'faixa' : `faixa ${tipo}`}
       role={tipo === 'erro' ? 'alert' : undefined}
     >
       <Icone caminho={ICONE_AVISO[tipo]} />
