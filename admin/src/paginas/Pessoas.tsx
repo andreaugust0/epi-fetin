@@ -15,7 +15,7 @@ export function Pessoas() {
   const [ok, setOk] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(true);
   const [novaAberta, setNovaAberta] = useState(false);
-  const [nova, setNova] = useState({ matricula: '', nome: '', funcao: '' });
+  const [nova, setNova] = useState({ nome: '', funcao: '' });
 
   const carregar = useCallback(async () => {
     setCarregando(true);
@@ -56,13 +56,15 @@ export function Pessoas() {
     await agir(
       () =>
         api.criarPessoa({
-          matricula: nova.matricula.trim(),
           nome: nova.nome.trim(),
-          funcao: nova.funcao.trim() || undefined,
+          funcao: nova.funcao.trim() || null,
+          // O gerador trata campo com default como obrigatorio no corpo;
+          // ser explicito aqui e mais claro que configurar o gerador.
+          ativo: true,
         }),
       `${nova.nome} cadastrado.`,
     );
-    setNova({ matricula: '', nome: '', funcao: '' });
+    setNova({ nome: '', funcao: '' });
     setNovaAberta(false);
   }
 
@@ -107,19 +109,13 @@ export function Pessoas() {
       {novaAberta ? (
         <form className="cartao" onSubmit={criar} style={{ marginBottom: 18 }}>
           <div className="filtros" style={{ marginBottom: 0 }}>
-            <Campo rotulo="Matrícula">
-              <input
-                value={nova.matricula}
-                onChange={(e) => setNova({ ...nova, matricula: e.target.value })}
-                required
-                autoFocus
-              />
-            </Campo>
             <Campo rotulo="Nome">
               <input
                 value={nova.nome}
                 onChange={(e) => setNova({ ...nova, nome: e.target.value })}
                 required
+                autoFocus
+                style={{ minWidth: 260 }}
               />
             </Campo>
             <Campo rotulo="Função">
@@ -143,7 +139,7 @@ export function Pessoas() {
               setBusca(e.target.value);
               setPagina(0);
             }}
-            placeholder="nome ou matrícula"
+            placeholder="nome do funcionário"
           />
         </Campo>
       </div>
@@ -152,7 +148,6 @@ export function Pessoas() {
         <table>
           <thead>
             <tr>
-              <th>Matrícula</th>
               <th>Nome</th>
               <th>Função</th>
               <th>Cadastro facial</th>
@@ -163,15 +158,21 @@ export function Pessoas() {
           <tbody>
             {itens.length === 0 && !carregando ? (
               <tr>
-                <td colSpan={6} className="vazio">
+                <td colSpan={5} className="vazio">
                   Nenhuma pessoa encontrada.
                 </td>
               </tr>
             ) : (
               itens.map((p) => (
                 <tr key={p.id}>
-                  <td className="mono">{p.matricula}</td>
-                  <td>{p.nome}</td>
+                  <td>
+                    {p.nome}{' '}
+                    {/* O id interno ajuda no suporte: e por ele que a pessoa
+                        aparece no log do servidor. */}
+                    <span className="mono" style={{ color: 'var(--slate-400)' }}>
+                      #{p.id}
+                    </span>
+                  </td>
                   <td>{p.funcao ?? '—'}</td>
                   <td>
                     {p.biometrias === 0 ? (

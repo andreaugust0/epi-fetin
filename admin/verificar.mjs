@@ -38,7 +38,7 @@ mkdirSync(SAIDA, { recursive: true });
 // versão do pacote playwright. Apontar o executável evita o download.
 const CHROME = process.env.CHROME_BIN ?? '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
 const navegador = await chromium.launch({ executablePath: CHROME });
-const contexto = await navegador.newContext({ viewport: { width: 1360, height: 960 } });
+const contexto = await navegador.newContext({ viewport: { width: 1720, height: 1000 } });
 const pagina = await contexto.newPage();
 
 const errosConsole = [];
@@ -128,22 +128,38 @@ try {
   await navegar(pagina, 'Pessoas');
   checar('tela de pessoas carrega', await pagina.getByRole('heading', { name: 'Pessoas' }).isVisible());
 
-  const matricula = `E2E-${Date.now().toString().slice(-6)}`;
+  const nomeNovo = `Teste ${Date.now().toString().slice(-6)}`;
   await pagina.getByRole('button', { name: 'Nova pessoa' }).click();
-  await pagina.getByLabel('Matrícula').fill(matricula);
-  await pagina.getByLabel('Nome').fill('Teste Automatizado');
+  await pagina.getByLabel('Nome').fill(nomeNovo);
   await pagina.getByLabel('Função').fill('QA');
   await pagina.getByRole('button', { name: 'Cadastrar' }).click();
   await pagina.waitForTimeout(1400);
-  checar('criar pessoa funciona', (await pagina.textContent('body')).includes(matricula));
+  checar(
+    'criar pessoa sem matricula funciona',
+    (await pagina.textContent('body')).includes(nomeNovo),
+  );
 
-  const linhaNova = pagina.locator('tbody tr', { hasText: matricula });
+  const linhaNova = pagina.locator('tbody tr', { hasText: nomeNovo });
   checar('nasce sem rosto cadastrado', await linhaNova.getByText('Sem rosto').isVisible());
   await linhaNova.getByRole('button', { name: 'Registrar consentimento' }).click();
   await pagina.waitForTimeout(1400);
+  // Regressão: a pastilha de estado "aviso" já herdou o padding da faixa
+  // de aviso por colisão de nome de classe, e virou um banner dentro da
+  // célula. Compara a altura das duas pastilhas de estado.
+  const alturasPastilha = await pagina.locator('.pastilha').evaluateAll((els) =>
+    els.map((e) => Math.round(e.getBoundingClientRect().height)),
+  );
+  const maior = Math.max(...alturasPastilha);
+  const menor = Math.min(...alturasPastilha);
+  checar(
+    'pastilhas tem altura consistente',
+    maior - menor <= 4,
+    `(entre ${menor}px e ${maior}px)`,
+  );
+
   checar(
     'registrar consentimento reflete na tabela',
-    await pagina.locator('tbody tr', { hasText: matricula }).getByText('Consentimento ativo').isVisible(),
+    await pagina.locator('tbody tr', { hasText: nomeNovo }).getByText('Consentimento ativo').isVisible(),
   );
   await pagina.screenshot({ path: `${SAIDA}/3-pessoas.png`, fullPage: true });
 
@@ -154,11 +170,17 @@ try {
   const botaoSalvar = pagina.getByRole('button', { name: /Salvo|Salvar/ }).first();
   checar('salvar começa desabilitado (nada mudou)', await botaoSalvar.isDisabled());
 
+  const totalEpis = await pagina.locator('.item-epi').count();
+  checar('os sete EPIs do catalogo aparecem', totalEpis === 7, `(${totalEpis})`);
+  for (const nome of ['Luvas', 'Botas', 'Máscara', 'Protetor Auricular']) {
+    checar(
+      `EPI "${nome}" presente`,
+      await pagina.locator('.item-epi', { hasText: nome }).first().isVisible(),
+    );
+  }
   checar(
-    'painel avisa sobre codigo fora do catalogo do app',
-    (await pagina.textContent('body')).includes('não\u00A0no catálogo')
-      || /não .{0,3}no catálogo do app/.test(await pagina.textContent('body')),
-    '(seed usa luva/bota, app usa luvas/botas)',
+    'sem aviso de codigo fora do catalogo',
+    !/no catálogo do app/.test(await pagina.textContent('body')),
   );
 
   const primeiroEpi = pagina.locator('.item-epi').first();
@@ -193,7 +215,31 @@ try {
   );
   checar('hero azul do painel renderiza', await pagina.locator('.hero').first().isVisible());
 
-  console.log('\n7. tema');
+  console.log('\n7. layout preenche a tela');
+  const larguraConteudo = await pagina.locator('.conteudo').evaluate(
+    (el) => el.getBoundingClientRect().width,
+  );
+  const larguraJanela = await pagina.evaluate(() => window.innerWidth);
+  checar(
+    'conteudo ocupa a largura disponivel',
+    larguraConteudo > larguraJanela - 260,
+    `(${Math.round(larguraConteudo)}px de ${larguraJanela - 244}px uteis)`,
+  );
+  const rolagemH = await pagina.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
+  );
+  checar('pagina nao rola na horizontal', !rolagemH);
+  const alturaLateral = await pagina.locator('.lateral').evaluate(
+    (el) => el.getBoundingClientRect().height,
+  );
+  const alturaUtil = await pagina.evaluate(() => window.innerHeight);
+  checar(
+    'lateral vai ate o fim da tela',
+    alturaLateral > alturaUtil - 40,
+    `(${Math.round(alturaLateral)}px de ${alturaUtil}px)`,
+  );
+
+  console.log('\n8. tema');
   // O app do totem tem um visual só, claro. O painel segue: preferência de
   // tema escuro no sistema não pode descaracterizá-lo.
   await pagina.emulateMedia({ colorScheme: 'dark' });
@@ -202,7 +248,7 @@ try {
   checar('tema unico se mantem sob preferencia escura', fundo === 'rgb(241, 245, 249)', `(${fundo})`);
   await pagina.emulateMedia({ colorScheme: 'light' });
 
-  console.log('\n8. saúde geral');
+  console.log('\n9. saúde geral');
   checar(
     'nenhum erro no console do navegador',
     errosConsole.length === 0,

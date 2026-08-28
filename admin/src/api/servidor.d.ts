@@ -611,7 +611,7 @@ export interface components {
             /** Id */
             id: number;
             /** Matricula */
-            matricula: string;
+            matricula: string | null;
             /** Nome */
             nome: string;
             /** Funcao */
@@ -634,12 +634,12 @@ export interface components {
         };
         /** PessoaIn */
         PessoaIn: {
-            /** Matricula */
-            matricula: string;
             /** Nome */
             nome: string;
             /** Funcao */
             funcao?: string | null;
+            /** Matricula */
+            matricula?: string | null;
             /**
              * Ativo
              * @default true
@@ -651,7 +651,7 @@ export interface components {
             /** Id */
             id: number;
             /** Matricula */
-            matricula: string;
+            matricula: string | null;
             /** Nome */
             nome: string;
             /** Funcao */
@@ -669,6 +669,8 @@ export interface components {
             nome?: string | null;
             /** Funcao */
             funcao?: string | null;
+            /** Matricula */
+            matricula?: string | null;
             /** Ativo */
             ativo?: boolean | null;
         };

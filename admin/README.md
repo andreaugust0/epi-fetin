@@ -34,7 +34,7 @@ máquina, mude `VITE_API_ALVO` no `.env`.
 | `npm run dev` | servidor de desenvolvimento com proxy |
 | `npm run build` | build de produção em `dist/` |
 | `npm run tipos` | **regenera os tipos a partir do OpenAPI do servidor** |
-| `node verificar.mjs` | percorre o painel num navegador real (24 checagens) |
+| `node verificar.mjs` | percorre o painel num navegador real (33 checagens) |
 
 ---
 
@@ -115,11 +115,21 @@ se o terminal está conectado; aqui ela consulta `/health` a cada dez segundos
 e diz se a API e o broker estão de pé. Quando o painel parar de carregar,
 ela responde na hora se o problema é o servidor ou a tela.
 
-**Código de EPI fora do catálogo aparece destacado.** Se o servidor conhece
-um código que o app do totem não reconhece — hoje `luva` e `bota`, contra
-`luvas` e `botas` do app —, o painel mostra um aviso e desenha o item com
-ícone genérico. O app descarta em silêncio o que não reconhece; esta tela é
-onde esse descasamento fica visível antes de virar bug em campo.
+**Código de EPI fora do catálogo aparece destacado.** Se o servidor conhecer
+um código que o app do totem não reconhece, o painel mostra um aviso e
+desenha o item com ícone genérico. O app descarta em silêncio o que não
+reconhece; esta tela é onde esse descasamento fica visível antes de virar
+bug em campo. Os sete códigos hoje estão alinhados.
+
+**Funcionário não tem matrícula.** A identificação é pelo rosto, e o nome
+basta na tela. O `#id` ao lado do nome é o identificador interno — é por ele
+que a pessoa aparece no log do servidor, o que ajuda no suporte. A coluna
+`matricula` continua existindo no banco, opcional, caso vocês adotem crachá
+depois.
+
+**O conteúdo ocupa a largura da janela.** Sem teto de largura: a tela é
+operada em monitor, e cortar em 1200&nbsp;px deixava um vazio à direita
+enquanto as tabelas rolavam na horizontal.
 
 ---
 

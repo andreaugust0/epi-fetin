@@ -11,6 +11,8 @@ import type { components } from './servidor';
 type S = components['schemas'];
 
 export type Pessoa = S['PessoaOut'];
+export type PessoaNova = S['PessoaIn'];
+export type PessoaEdicao = S['PessoaPatch'];
 export type PessoaDetalhe = S['PessoaDetalhe'];
 export type PaginaPessoas = S['PaginaPessoas'];
 export type Verificacao = S['VerificacaoOut'];
@@ -145,9 +147,12 @@ export const api = {
   pessoas: (params: Record<string, string | number | boolean | undefined>) =>
     chamar<PaginaPessoas>('/pessoas', { params }),
   pessoa: (id: number) => chamar<PessoaDetalhe>(`/pessoas/${id}`),
-  criarPessoa: (corpo: { matricula: string; nome: string; funcao?: string }) =>
+  // Os corpos vêm do schema GERADO, não escritos à mão: quando o servidor
+  // tornou a matrícula opcional, foi este tipo que acusou a divergência no
+  // build em vez de deixar passar.
+  criarPessoa: (corpo: PessoaNova) =>
     chamar<Pessoa>('/pessoas', { metodo: 'POST', corpo }),
-  editarPessoa: (id: number, corpo: Record<string, unknown>) =>
+  editarPessoa: (id: number, corpo: PessoaEdicao) =>
     chamar<Pessoa>(`/pessoas/${id}`, { metodo: 'PATCH', corpo }),
   consentir: (id: number, versao_termo: string) =>
     chamar<{ ok: boolean }>(`/pessoas/${id}/consentimento`, {
