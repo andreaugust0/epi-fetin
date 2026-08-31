@@ -9,13 +9,21 @@ e relatórios.
 from __future__ import annotations
 
 import asyncio
+import os
 
-from fastapi.testclient import TestClient
-from sqlalchemy import delete
+# Client_id próprio ANTES de importar app.main, que lê settings na
+# importação. Sem isto, este teste conecta no broker com o mesmo id da API
+# que já está no ar, e o broker derruba uma das duas — os dois processos
+# passam a se expulsar em revezamento e o teste fica intermitente por um
+# motivo que não tem nada a ver com o que ele testa.
+os.environ.setdefault("MQTT_CLIENT_ID_API", "teste-api-admin")
 
-from app.db.models import LogAuditoria, Pessoa
-from app.db.session import SessionLocal, engine
-from app.main import app
+from fastapi.testclient import TestClient  # noqa: E402
+from sqlalchemy import delete  # noqa: E402
+
+from app.db.models import LogAuditoria, Pessoa  # noqa: E402
+from app.db.session import SessionLocal, engine  # noqa: E402
+from app.main import app  # noqa: E402
 
 ok, falhas = 0, []
 

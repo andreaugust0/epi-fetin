@@ -124,8 +124,12 @@ async def consumir() -> None:
 
 async def main() -> None:
     configurar_logging()
-    # O worker também publica (cmd/liberar sai daqui, ao decidir o resultado).
-    await publisher.start()
+    # O worker também publica (cmd/liberar sai daqui, ao decidir o
+    # resultado). Client_id PRÓPRIO, diferente do da API e do consumidor
+    # deste mesmo processo: id repetido faz o broker derrubar quem já
+    # estava conectado, e os dois processos passam a se expulsar em
+    # revezamento — com `cmd/liberar` falhando de forma intermitente.
+    await publisher.start(f"{settings.MQTT_CLIENT_ID_WORKER}-pub")
 
     parar = asyncio.Event()
     laco = asyncio.get_running_loop()
