@@ -1,0 +1,33 @@
+# Copie para /etc/systemd/system/epi-borda.service e ajuste User e
+# WorkingDirectory. Depois:
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now epi-borda
+#   journalctl -u epi-borda -f
+
+[Unit]
+Description=EPI Fetin - cliente de borda (Raspberry Pi)
+# network-online, não apenas network: sem isto o serviço sobe antes de a
+# Pi ter IP, o paho falha o primeiro connect e o Restart mascara com um
+# ciclo de reinício que polui o journal.
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/epi-fetin/raspberry
+ExecStart=/usr/bin/python3 -m epi_borda
+Environment=PYTHONUNBUFFERED=1
+
+# A catraca é fail-secure: uma borda em looping de reinício deixa a
+# catraca fechada, que é o estado correto, e aparece no painel como
+# câmera offline porque o testamento sai mesmo em queda abrupta.
+Restart=always
+RestartSec=5
+
+# A câmera precisa do grupo video. Sem isto o /dev/video0 dá permissão
+# negada e o erro parece defeito de hardware.
+SupplementaryGroups=video
+
+[Install]
+WantedBy=multi-user.target

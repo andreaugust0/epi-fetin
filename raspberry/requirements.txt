@@ -1,0 +1,8 @@
+# Obrigatório — é só isto que o pacote epi_borda precisa.
+paho-mqtt>=2.0
+
+# Só para o adaptador de exemplo em detectores/onnx_yolo.py.
+# Se você já tem o seu próprio código de inferência, não precisa destes.
+numpy>=1.24
+onnxruntime>=1.16
+opencv-python-headless>=4.8
