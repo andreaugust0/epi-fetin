@@ -48,11 +48,21 @@ async def identificar(
     await db.commit()
 
     identificado = ident.resultado is ResultadoIdentificacao.IDENTIFICADO
+
+    # `ident` foi construído com `pessoa_id=...` (não com a relação `pessoa`
+    # carregada), então `ident.pessoa` dispararia um lazy-load implícito e
+    # síncrono fora do bridge greenlet do SQLAlchemy async. Buscamos a
+    # Pessoa com um await explícito, que é async-safe.
+    nome = None
+    if ident.pessoa_id is not None:
+        pessoa = await db.get(Pessoa, ident.pessoa_id)
+        nome = pessoa.nome if pessoa else None
+
     return IdentificacaoOut(
         identificacao_id=ident.id if identificado else None,
         resultado=ident.resultado.value,
         pessoa_id=ident.pessoa_id,
-        nome=ident.pessoa.nome if ident.pessoa else None,
+        nome=nome,
         distancia=ident.distancia if settings.DEBUG else None,
         expira_em=ident.expira_em if identificado else None,
     )
