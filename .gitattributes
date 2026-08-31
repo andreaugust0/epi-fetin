@@ -1,0 +1,31 @@
+# Finais de linha, normalizados de uma vez.
+#
+# O problema que isto resolve: cada zip extraido no Windows escreve LF, a
+# arvore ja commitada tinha CRLF, e o Git passa a marcar o arquivo inteiro
+# como modificado sem uma linha de conteudo ter mudado. Foi o que encheu o
+# `git status` de 39 arquivos falsos.
+#
+# text=auto eol=lf: o Git guarda LF no repositorio E entrega LF no disco,
+# no Windows inclusive. E o que a Raspberry, os conteineres e o shell
+# esperam; editor moderno no Windows lida com LF sem reclamar.
+* text=auto eol=lf
+
+# Estes precisam de LF mesmo, sob pena de nao executarem.
+*.sh   text eol=lf
+*.service text eol=lf
+Dockerfile text eol=lf
+Makefile text eol=lf
+
+# Binarios: nunca converter.
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.ico  binary
+*.pdf  binary
+*.zip  binary
+*.onnx binary
+*.pt   binary
+*.ttf  binary
+*.woff binary
+*.woff2 binary
