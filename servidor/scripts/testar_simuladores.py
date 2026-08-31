@@ -114,7 +114,11 @@ async def presenca(client_id: str) -> bool:
 async def main() -> None:
     ponto_id = await limpar()
     parar = asyncio.Event()
-    await publisher.start()
+    # Client_id próprio: com o mesmo id da API que já está no ar, o
+    # broker derruba uma das duas conexões e o teste falha com
+    # "broker MQTT indisponível" por um motivo que não tem nada a ver
+    # com o que ele testa.
+    await publisher.start("teste-simuladores")
     tarefa_worker = asyncio.create_task(worker(parar))
     await asyncio.sleep(1.0)
 

@@ -228,7 +228,11 @@ async def main() -> None:
     ponto_id, pessoa_id, site_cod, ponto_cod = await preparar()
     parar = asyncio.Event()
 
-    await publisher.start()
+    # Client_id próprio: com o mesmo id da API que já está no ar, o
+    # broker derruba uma das duas conexões e o teste falha com
+    # "broker MQTT indisponível" por um motivo que não tem nada a ver
+    # com o que ele testa.
+    await publisher.start("teste-fluxo")
     await asyncio.sleep(0.6)
     checar("publicador conectado ao broker", publisher.conectado)
 
