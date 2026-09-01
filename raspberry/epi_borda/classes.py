@@ -27,7 +27,9 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
+import unicodedata
 
 #: Os sete códigos que o servidor conhece hoje (scripts/init_db.py).
 #: Mantido aqui como cópia deliberada: é contra isto que validamos sem
@@ -44,8 +46,16 @@ CODIGOS_SERVIDOR = {
 
 #: nome que SAI do modelo  ->  código que o SERVIDOR espera
 #:
-#: Os nomes à esquerda são um palpite baseado no padrão mais comum de
-#: dataset de EPI. CONFIRME com --do-modelo antes de rodar em campo.
+#: AS CHAVES FICAM NA FORMA NORMALIZADA: minúsculas, sem acento, com
+#: hífen no lugar de espaço e sublinhado. `normalizar_nome` reduz o nome
+#: vindo do modelo a essa forma antes de procurar aqui, então não é
+#: preciso listar `Óculos`, `óculos` e `OCULOS` — as três viram `oculos`.
+#: Uma chave escrita fora dessa forma seria inalcançável, e é isso que a
+#: checagem em `validar_mapa` pega.
+#:
+#: As sete de baixo são as classes REAIS do modelo do TCC, confirmadas
+#: com `--do-modelo`. As de cima cobrem datasets públicos em inglês, para
+#: o dia em que vocês trocarem ou compararem modelos.
 DE_MODELO_PARA_SERVIDOR: dict[str, str] = {
     # inglês, o mais comum em dataset público
     "helmet": "capacete",
@@ -61,17 +71,15 @@ DE_MODELO_PARA_SERVIDOR: dict[str, str] = {
     "ear-protection": "auricular",
     "mask": "mascara",
     "gloves": "luvas",
-    # português, caso o dataset seja de vocês
+    # português — as classes do modelo de vocês
     "capacete": "capacete",
     "colete": "colete",
     "oculos": "oculos",
-    "óculos": "oculos",
     "botas": "botas",
     "bota": "botas",
     "auricular": "auricular",
     "protetor-auricular": "auricular",
     "mascara": "mascara",
-    "máscara": "mascara",
     "luvas": "luvas",
     "luva": "luvas",
 }
@@ -86,7 +94,7 @@ DE_MODELO_PARA_SERVIDOR: dict[str, str] = {
 #: aqui, e o adaptador em detectores/ decide se usa para reforçar a
 #: ausência.
 IGNORADAS = {
-    "person", "pessoa", "head", "cabeca", "cabeça", "face", "rosto",
+    "person", "pessoa", "head", "cabeca", "face", "rosto",
     "no-helmet", "no-hardhat", "no-vest", "no-mask", "no-goggles",
     "sem-capacete", "sem-colete", "sem-mascara",
 }
@@ -96,13 +104,33 @@ class MapaIncompleto(RuntimeError):
     """O modelo emite uma classe que ninguém decidiu o que fazer com."""
 
 
+def normalizar_nome(bruto: str) -> str:
+    """Reduz um nome de classe à forma usada como chave do mapa.
+
+    O nome da classe vem do `data.yaml` do treino, escrito por gente, e
+    varia do jeito que texto escrito por gente varia: maiúscula inicial
+    (`Capacete`), espaço em vez de hífen (`Protetor auricular`),
+    sublinhado (`hard_hat`), acento presente ou não (`Óculos`/`Oculos`).
+
+    Nada disso é diferença de significado, então normalizamos em vez de
+    listar cada variação no mapa. O que sobra depois daqui — nome que
+    realmente designa outra coisa — continua estourando alto, que é o
+    comportamento que interessa preservar.
+    """
+    sem_acento = "".join(
+        c for c in unicodedata.normalize("NFD", bruto.strip().lower())
+        if unicodedata.category(c) != "Mn"
+    )
+    return re.sub(r"[\s_]+", "-", sem_acento)
+
+
 def traduzir(classe_modelo: str) -> str | None:
     """Código do servidor, ou None se a classe é conhecida-e-ignorada.
 
     Levanta MapaIncompleto para classe que ninguém previu. Falhar aqui é
     melhor do que devolver None e a classe sumir sem rastro.
     """
-    chave = classe_modelo.strip().lower().replace("_", "-")
+    chave = normalizar_nome(classe_modelo)
     if chave in DE_MODELO_PARA_SERVIDOR:
         return DE_MODELO_PARA_SERVIDOR[chave]
     if chave in IGNORADAS:
@@ -139,6 +167,19 @@ def validar_mapa(nomes_do_modelo: list[str]) -> None:
         raise MapaIncompleto(
             "o mapa aponta para códigos que o servidor não conhece: "
             + ", ".join(invalidos)
+        )
+
+    # Chave que não está na forma normalizada é chave morta: a busca
+    # nunca chega nela, e o EPI correspondente vira "classe desconhecida"
+    # num momento ruim. Barato conferir na subida.
+    tortas = sorted(
+        k for k in (*DE_MODELO_PARA_SERVIDOR, *IGNORADAS)
+        if normalizar_nome(k) != k
+    )
+    if tortas:
+        raise MapaIncompleto(
+            "chaves fora da forma normalizada (minúscula, sem acento, com "
+            "hífen), que nunca seriam encontradas: " + ", ".join(tortas)
         )
 
 

@@ -1,11 +1,12 @@
 {
   "$schema_versao": 1,
   "descricao": "Catálogo canônico de EPIs do EPI Fetin. Fonte de verdade única para servidor, tablet, painel administrativo e Raspberry. Ver LEIA-ME.md ao lado antes de editar.",
-  "atualizado_em": "2026-08-31",
+  "atualizado_em": "2026-09-01",
   "regras": {
     "codigo": "minúsculas, ASCII sem acento, sem espaço, sem hífen. É identificador, não texto: NUNCA renomeie um código existente — mude o rótulo.",
     "rotulo": "o que o ser humano lê. Pode mudar quando quiser, com acento e maiúscula.",
-    "trafego": "só o código trafega em MQTT, HTTP e banco. Rótulo e ícone nunca saem do dispositivo que desenha a tela."
+    "trafego": "só o código trafega em MQTT, HTTP e banco. Rótulo e ícone nunca saem do dispositivo que desenha a tela.",
+    "sinonimos_modelo": "forma normalizada: minúsculas, sem acento, hífen no lugar de espaço e sublinhado. A borda normaliza o nome vindo do modelo antes de procurar, então 'Protetor auricular', 'PROTETOR_AURICULAR' e 'protetor-auricular' são a mesma chave."
   },
   "epis": [
     {
@@ -14,7 +15,12 @@
       "descricao": "Proteção da cabeça",
       "icone_mdi": "hard-hat",
       "classe_modelo": "helmet",
-      "sinonimos_modelo": ["helmet", "hardhat", "hard-hat", "capacete"]
+      "sinonimos_modelo": [
+        "helmet",
+        "hardhat",
+        "hard-hat",
+        "capacete"
+      ]
     },
     {
       "codigo": "colete",
@@ -22,7 +28,11 @@
       "descricao": "Proteção do tronco",
       "icone_mdi": "tshirt-crew",
       "classe_modelo": "vest",
-      "sinonimos_modelo": ["vest", "safety-vest", "colete"]
+      "sinonimos_modelo": [
+        "vest",
+        "safety-vest",
+        "colete"
+      ]
     },
     {
       "codigo": "oculos",
@@ -30,7 +40,11 @@
       "descricao": "Proteção ocular",
       "icone_mdi": "safety-goggles",
       "classe_modelo": "goggles",
-      "sinonimos_modelo": ["goggles", "glasses", "oculos", "óculos"]
+      "sinonimos_modelo": [
+        "goggles",
+        "glasses",
+        "oculos"
+      ]
     },
     {
       "codigo": "botas",
@@ -38,7 +52,12 @@
       "descricao": "Proteção dos pés",
       "icone_mdi": "shoe-formal",
       "classe_modelo": "boots",
-      "sinonimos_modelo": ["boots", "shoes", "botas", "bota"]
+      "sinonimos_modelo": [
+        "boots",
+        "shoes",
+        "botas",
+        "bota"
+      ]
     },
     {
       "codigo": "auricular",
@@ -46,7 +65,12 @@
       "descricao": "Proteção auditiva",
       "icone_mdi": "headphones",
       "classe_modelo": "earmuffs",
-      "sinonimos_modelo": ["earmuffs", "ear-protection", "auricular", "protetor-auricular"]
+      "sinonimos_modelo": [
+        "earmuffs",
+        "ear-protection",
+        "auricular",
+        "protetor-auricular"
+      ]
     },
     {
       "codigo": "mascara",
@@ -54,7 +78,10 @@
       "descricao": "Proteção respiratória",
       "icone_mdi": "face-mask",
       "classe_modelo": "mask",
-      "sinonimos_modelo": ["mask", "mascara", "máscara"]
+      "sinonimos_modelo": [
+        "mask",
+        "mascara"
+      ]
     },
     {
       "codigo": "luvas",
@@ -62,12 +89,27 @@
       "descricao": "Proteção das mãos",
       "icone_mdi": "hand-back-right",
       "classe_modelo": "gloves",
-      "sinonimos_modelo": ["gloves", "luvas", "luva"]
+      "sinonimos_modelo": [
+        "gloves",
+        "luvas",
+        "luva"
+      ]
     }
   ],
   "ignoradas_no_modelo": [
-    "person", "pessoa", "head", "cabeca", "cabeça", "face", "rosto",
-    "no-helmet", "no-hardhat", "no-vest", "no-mask", "no-goggles",
-    "sem-capacete", "sem-colete", "sem-mascara"
+    "person",
+    "pessoa",
+    "head",
+    "cabeca",
+    "face",
+    "rosto",
+    "no-helmet",
+    "no-hardhat",
+    "no-vest",
+    "no-mask",
+    "no-goggles",
+    "sem-capacete",
+    "sem-colete",
+    "sem-mascara"
   ]
 }
