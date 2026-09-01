@@ -1,0 +1,88 @@
+{
+  "name": "detecao-de-epi-fetin",
+  "version": "1.0.0",
+  "main": "expo-router/entry",
+  "private": true,
+  "scripts": {
+    "postinstall": "patch-package",
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "web": "expo start --web",
+    "lint": "eslint . --max-warnings=0",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write \"src/**/*.{ts,tsx,js,json}\"",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx,js,json}\"",
+    "typecheck": "tsc --noEmit",
+    "test": "jest",
+    "test:watch": "jest --watch"
+  },
+  "dependencies": {
+    "@expo/vector-icons": "^15.0.2",
+    "@infinitered/react-native-mlkit-face-detection": "5.0.0",
+    "@react-native-async-storage/async-storage": "2.2.0",
+    "base64-js": "1.5.1",
+    "expo": "~57.0.9",
+    "expo-asset": "~57.0.8",
+    "expo-camera": "~57.0.3",
+    "expo-constants": "~57.0.8",
+    "expo-crypto": "~57.0.1",
+    "expo-font": "~57.0.1",
+    "expo-haptics": "~57.0.1",
+    "expo-image-manipulator": "~57.0.13",
+    "expo-linear-gradient": "~57.0.1",
+    "expo-linking": "~57.0.4",
+    "expo-router": "~57.0.9",
+    "expo-secure-store": "~57.0.2",
+    "expo-status-bar": "~57.0.1",
+    "onnxruntime-react-native": "1.24.3",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "react-native": "0.86.2",
+    "react-native-reanimated": "4.5.1",
+    "react-native-safe-area-context": "~5.7.0",
+    "react-native-screens": "~4.26.0",
+    "react-native-svg": "15.15.4",
+    "react-native-web": "^0.21.2",
+    "react-native-worklets": "0.10.1",
+    "upng-js": "2.1.0"
+  },
+  "devDependencies": {
+    "@testing-library/react-native": "^14.0.1",
+    "@types/jest": "29.5.14",
+    "@types/react": "~19.2.2",
+    "@types/upng-js": "2.1.5",
+    "babel-preset-expo": "^57.0.5",
+    "eslint": "^9.39.5",
+    "eslint-config-expo": "^57.0.1",
+    "eslint-config-prettier": "^10.1.8",
+    "jest": "^29.7.0",
+    "jest-expo": "^57.0.3",
+    "patch-package": "^8.0.1",
+    "prettier": "^3.9.6",
+    "typescript": "~6.0.3"
+  },
+  "overrides": {
+    "react-dom": "19.2.3"
+  },
+  "jest": {
+    "preset": "jest-expo",
+    "setupFilesAfterEnv": [
+      "<rootDir>/jest.setup.ts"
+    ],
+    "moduleNameMapper": {
+      "\\.onnx$": "<rootDir>/src/test-utils/onnxAssetMock.js",
+      "^@/(.*)$": "<rootDir>/src/$1"
+    },
+    "transformIgnorePatterns": [
+      "node_modules/(?!(?:.pnpm/)?((jest-)?react-native|@react-native(-community)?|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@sentry/react-native|native-base|react-native-svg))"
+    ],
+    "collectCoverageFrom": [
+      "src/**/*.{ts,tsx}",
+      "!src/**/*.d.ts"
+    ]
+  },
+  "allowScripts": {
+    "unrs-resolver@1.12.2": true
+  }
+}

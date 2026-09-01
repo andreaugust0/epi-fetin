@@ -1,0 +1,64 @@
+{
+  "expo": {
+    "name": "Detecção de EPI",
+    "slug": "projeto-fetin",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "epifetin",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.fetin.detecaodeepi",
+      "infoPlist": {
+        "NSCameraUsageDescription": "O aplicativo usa a câmera para verificar se os equipamentos de proteção individual estão sendo utilizados."
+      }
+    },
+    "android": {
+      "package": "com.fetin.detecaodeepi",
+      "adaptiveIcon": {
+        "backgroundColor": "#1D4ED8",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.CAMERA"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro"
+    },
+    "plugins": [
+      [
+        "expo-router",
+        {
+          "root": "./src/app"
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "O aplicativo usa a câmera para verificar os equipamentos de proteção individual."
+        }
+      ],
+      "expo-asset",
+      "expo-font",
+      "expo-secure-store"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "router": {
+        "root": "./src/app"
+      },
+      "eas": {
+        "projectId": "00df0b32-4803-4997-b83f-d5d9401279f1"
+      }
+    },
+    "owner": "caiocastros-team"
+  }
+}
