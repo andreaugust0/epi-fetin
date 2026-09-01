@@ -53,6 +53,11 @@ async def identificar(
     # carregada), então `ident.pessoa` dispararia um lazy-load implícito e
     # síncrono fora do bridge greenlet do SQLAlchemy async. Buscamos a
     # Pessoa com um await explícito, que é async-safe.
+    #
+    # `db.get` e não `db.refresh`: o get consulta primeiro o identity map da
+    # sessão, e a Pessoa já está lá — o serviço de biometria acabou de
+    # carregá-la para comparar os vetores. Então no caminho feliz isto não
+    # custa consulta nenhuma.
     nome = None
     if ident.pessoa_id is not None:
         pessoa = await db.get(Pessoa, ident.pessoa_id)
