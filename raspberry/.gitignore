@@ -1,4 +1,14 @@
 .env
 __pycache__/
 *.pyc
+
+# Pesos do modelo: binário grande, versionado fora do git.
+# O .hef compilado para o Hailo mora em ~/epi-testes na Raspberry.
 modelos/*.onnx
+*.onnx
+*.hef
+*.pt
+
+# Ambiente virtual, caso alguém crie um aqui dentro.
+.venv/
+venv/
