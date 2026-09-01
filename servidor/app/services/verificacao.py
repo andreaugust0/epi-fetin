@@ -20,6 +20,7 @@ from app.db.models import (
     EpiExigido,
     EventoAcesso,
     Identificacao,
+    Pessoa,
     PontoAcesso,
     Site,
     StatusVerificacao,
@@ -30,8 +31,13 @@ from app.db.models import (
 )
 from app.mqtt import topics
 from app.mqtt.publisher import MqttIndisponivel, publisher
-from app.mqtt.schemas import CapturarCmd, LiberarCmd, PassagemEvt, ResultadoEvt
-from app.realtime.hub import hub
+from app.mqtt.schemas import (
+    AvisoTabletEvt,
+    CapturarCmd,
+    LiberarCmd,
+    PassagemEvt,
+    ResultadoEvt,
+)
 
 log = logging.getLogger(__name__)
 
@@ -253,27 +259,63 @@ async def registrar_passagem(db: AsyncSession, evt: PassagemEvt) -> None:
         )
     )
     await db.flush()
-    await hub.publicar(
-        verif.ponto_id, {"tipo": "passagem", "verificacao_id": str(verif.id),
-                         "evento": evt.evento}
+    await _avisar_tablet(
+        verif.ponto_id,
+        {"tipo": "passagem", "verificacao_id": str(verif.id),
+         "evento": evt.evento},
     )
 
 
 async def _notificar(
     db: AsyncSession, verif: Verificacao, faltantes: list[str]
 ) -> None:
-    """Empurra o desfecho ao tablet pelo WebSocket."""
-    await hub.publicar(
+    """Anuncia o desfecho no canal interno, para chegar ao tablet.
+
+    Publica no broker em vez de escrever direto no `hub`. Parece um desvio
+    e é o contrário: quem decide o desfecho é o WORKER, que roda em outro
+    processo, e o `hub` é um objeto em memória com os WebSockets do
+    processo da API. Escrevendo direto, a mensagem se perdia — o tablet
+    ficava esperando um resultado que já estava gravado no banco.
+
+    Cada processo da API assina este tópico e reemite para os seus
+    próprios WebSockets (`app/realtime/ponte.py`). Com a API e o worker no
+    mesmo processo, o caminho é o mesmo e entrega uma vez só.
+    """
+    # `verif.pessoa` dispararia lazy-load síncrono fora do bridge greenlet.
+    # Mesma armadilha que Caio corrigiu em /identificacao (5f6cfe3): o get
+    # consulta o identity map antes, então no caminho comum não custa
+    # consulta nenhuma.
+    nome = None
+    if verif.pessoa_id is not None:
+        pessoa = await db.get(Pessoa, verif.pessoa_id)
+        nome = pessoa.nome if pessoa else None
+
+    await _avisar_tablet(
         verif.ponto_id,
         {
             "tipo": "resultado",
             "verificacao_id": str(verif.id),
             "status": verif.status.value,
-            "pessoa": verif.pessoa.nome if verif.pessoa else None,
+            "pessoa": nome,
             "faltantes": faltantes,
             "motivo": verif.motivo_falha,
         },
     )
+
+
+async def _avisar_tablet(ponto_id: int, mensagem: dict) -> None:
+    """Publica no canal interno; a ponte de cada API reemite no WebSocket."""
+    try:
+        await publisher.publicar(
+            topics.AVISOS_TABLET,
+            AvisoTabletEvt(ponto_id=ponto_id, mensagem=mensagem),
+            qos=1,
+        )
+    except MqttIndisponivel as exc:
+        # Aviso ao tablet é acessório: a decisão já está no banco e a
+        # catraca já foi comandada. Perder o aviso degrada a experiência,
+        # não a segurança — então não derrubamos o processamento.
+        log.warning("não consegui avisar o ponto %s: %s", ponto_id, exc)
 
 
 # ------------------------------------------------------------------ timeout

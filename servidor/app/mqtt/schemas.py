@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime, timezone
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -80,6 +80,27 @@ class PassagemEvt(Envelope):
     evento: Literal[
         "LIBERADO", "PASSOU", "TIMEOUT_SEM_PASSAGEM", "FALHA_RELE"
     ]
+
+
+class AvisoTabletEvt(Envelope):
+    """Worker -> processos da API, para chegar ao tablet pelo WebSocket.
+
+    Existe porque o `hub` de WebSocket é um objeto em memória e o worker
+    roda em OUTRO PROCESSO: ele descobre o desfecho, mas os tablets estão
+    conectados ao processo da API. Sem uma volta pelo broker, a mensagem
+    nunca atravessa e o tablet espera para sempre.
+
+    Reaproveitar o MQTT aqui evita acrescentar Redis ao projeto por causa
+    de uma mensagem por verificação.
+
+    `mensagem` é repassada ao WebSocket sem interpretação. O formato do que
+    o tablet recebe fica definido num lugar só — onde ele é produzido, em
+    `services/verificacao.py` — em vez de espalhado entre o schema, a
+    ponte e o serviço.
+    """
+
+    ponto_id: int
+    mensagem: dict[str, Any]
 
 
 class StatusEvt(BaseModel):

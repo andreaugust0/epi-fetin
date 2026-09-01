@@ -7,6 +7,7 @@ processo separado. Ver o docstring do worker para o porquê.
 from __future__ import annotations
 
 import logging
+import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
@@ -18,6 +19,7 @@ from app.core.config import settings
 from app.core.logging import configurar_logging
 from app.db.session import engine
 from app.mqtt.publisher import publisher
+from app.realtime.ponte import ponte
 
 log = logging.getLogger(__name__)
 
@@ -27,7 +29,13 @@ async def lifespan(app: FastAPI):
     configurar_logging()
     log.info("subindo %s (env=%s)", settings.APP_NAME, settings.ENV)
     await publisher.start()
+    # Assina o canal interno de desfecho e reemite para os WebSockets
+    # deste processo. O client_id leva o PID: com --workers N, cada
+    # processo precisa da própria conexão, senão o broker derruba um
+    # ao outro e só o último a conectar recebe os avisos.
+    await ponte.start(f"{settings.MQTT_CLIENT_ID_API}-ws-{os.getpid()}")
     yield
+    await ponte.stop()
     await publisher.stop()
     await engine.dispose()
     log.info("encerrado")

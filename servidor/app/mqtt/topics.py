@@ -31,6 +31,16 @@ def config_dispositivo(site: str, device_id: str) -> str:
     return f"{NS}/{V}/{site}/config/{device_id}"
 
 
+#: Canal interno do backend: o worker decide o desfecho, os processos da API
+#: reemitem para os WebSockets que cada um segura.
+#:
+#: Fora da árvore `{site}/{ponto}` de propósito. Ali cada dispositivo tem
+#: permissão de publicar no próprio ponto, e um ESP32 comprometido poderia
+#: forjar um desfecho "APROVADA" direto para a tela do tablet. Aqui, o ACL
+#: do broker libera `epi/v1/backend/#` apenas para o backend.
+AVISOS_TABLET = f"{NS}/{V}/backend/avisos"
+
+
 # ------------------------------------------------------------------ subscribe
 #: Assinaturas do worker. Curinga em site/ponto: adicionar um ponto de acesso
 #: novo não exige tocar no servidor.

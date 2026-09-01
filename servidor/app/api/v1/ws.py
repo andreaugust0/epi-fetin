@@ -13,6 +13,16 @@ log = logging.getLogger(__name__)
 router = APIRouter()
 
 
+# Dois caminhos, um handler só.
+#
+# O canônico é `/api/v1/ws/pontos/{id}`: o formato da mensagem que trafega
+# aqui (`tipo`, `status`, `faltantes`) é contrato igual ao de qualquer
+# resposta JSON, e precisa poder versionar junto com o resto. Um caminho
+# sem versão é um contrato que não tem para onde ir quando mudar.
+#
+# `/ws/pontos/{id}` fica como apelido para não quebrar nada que já aponte
+# para lá. Some quando o tablet estiver publicado usando o caminho novo.
+@router.websocket("/api/v1/ws/pontos/{ponto_id}")
 @router.websocket("/ws/pontos/{ponto_id}")
 async def canal_do_ponto(
     websocket: WebSocket, ponto_id: int, token: str = Query(...)

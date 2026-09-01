@@ -1,13 +1,13 @@
-"""Hub de WebSocket: empurra o desfecho da verificação ao tablet.
+"""Hub de WebSocket: os tablets conectados A ESTE processo.
 
-Atenção ao desenho: o worker MQTT roda em OUTRO PROCESSO e é ele quem
-descobre o resultado. Este hub em memória só alcança os tablets conectados
-ao mesmo processo da API.
+O hub é deliberadamente local: ele conhece só os WebSockets abertos no
+processo em que vive, e ninguém o chama de fora.
 
-Em desenvolvimento com um único processo, funciona. Para valer, publique os
-avisos num canal compartilhado (Redis pub/sub é o caminho mais curto) e faça
-cada processo da API reemitir para os seus WebSockets. O ponto de extensão
-é `publicar` — troque o corpo e nada mais muda.
+Quem descobre o desfecho é o worker MQTT, em OUTRO PROCESSO — então
+escrever aqui a partir dele não alcançava ninguém, e o tablet ficava
+esperando um aviso que já tinha acontecido. Quem atravessa essa fronteira
+é `app/realtime/ponte.py`, que assina o canal interno no broker e chama
+`publicar` deste lado. Ver o docstring dela para o porquê da escolha.
 """
 from __future__ import annotations
 

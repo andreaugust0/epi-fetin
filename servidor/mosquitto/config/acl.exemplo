@@ -10,6 +10,12 @@
 # ---------------------------------------------------------------------------
 
 # Servidor: usuário único da aplicação, acesso amplo ao namespace.
+#
+# `epi/v1/backend/#` é o canal interno por onde o worker manda o desfecho
+# aos processos da API, que reemitem no WebSocket do tablet. Ele fica FORA
+# da árvore {site}/{ponto} justamente para que nenhum dispositivo o alcance:
+# um ESP32 comprometido que pudesse publicar ali forjaria um "APROVADA" na
+# tela do totem sem passar pela decisão do servidor.
 user backend
 topic readwrite epi/#
 
