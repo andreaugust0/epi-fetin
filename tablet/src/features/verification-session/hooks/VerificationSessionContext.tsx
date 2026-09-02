@@ -154,7 +154,14 @@ export const VerificationSessionProvider = ({ children }: { children: ReactNode 
 
       try {
         const detection = await getEpiVerificationService().run(
-          { requiredItems, signal: controller.signal },
+          {
+            requiredItems,
+            signal: controller.signal,
+            // Amarra a verificação à pessoa reconhecida na etapa anterior.
+            // Sem isto o servidor abre a verificação sem pessoa vinculada e
+            // a passagem some do histórico de conformidade dela.
+            identificacaoId: snapshot.identificationId,
+          },
           (event) => {
             if (isCurrent()) {
               dispatch(event);
@@ -184,7 +191,10 @@ export const VerificationSessionProvider = ({ children }: { children: ReactNode 
         }
       }
     },
-    [takeOver],
+    // snapshot.identificationId entra nas dependencias: sem ele o callback
+    // congela o id da primeira identificacao e todas as verificacoes
+    // seguintes iriam amarradas a pessoa errada.
+    [takeOver, snapshot.identificationId],
   );
 
   const value = useMemo<VerificationSessionContextValue>(
