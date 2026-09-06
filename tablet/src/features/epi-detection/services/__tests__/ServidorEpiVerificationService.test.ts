@@ -45,12 +45,18 @@ const verificacao = (status: string, deteccoes: unknown[]) => ({
   deteccoes,
 });
 
-const det = (epi: string, presente: boolean, confianca: number) => ({
+const det = (
+  epi: string,
+  presente: boolean,
+  confianca: number,
+  aceito: boolean = presente,
+) => ({
   epi,
   rotulo: epi,
   presente,
   confianca,
   frames_confirmados: presente ? 5 : 0,
+  aceito,
 });
 
 /** Responde ao POST com 202 e ao GET com a verificação dada. */
@@ -314,6 +320,76 @@ describe('ServidorEpiVerificationService', () => {
       identificacao_id: 'i-42',
     });
     expect(String(post?.[0])).toContain('/api/v1/verificacoes');
+  });
+
+  /**
+   * A checagem de segurança do arquivo.
+   *
+   * A borda VIU o capacete, mas a 30% — abaixo do limiar do servidor. A
+   * catraca não abriu. Se a tela pintasse esse capacete de verde porque
+   * `presente` é verdadeiro, ela estaria dizendo "capacete OK" na frente
+   * de uma porta trancada, e o operador concluiria que o problema é a
+   * porta.
+   */
+  it('nao conta como detectado o EPI que o servidor viu mas nao aceitou', async () => {
+    mockarFetch(
+      verificacao('REPROVADA', [
+        det('capacete', true, 0.3, false),
+        det('colete', true, 0.91),
+      ]),
+    );
+    const parar = responderPeloCanal('REPROVADA');
+
+    const r = await new ServidorEpiVerificationService({ duracaoMinimaMs: 0 }).run(
+      { requiredItems: ['capacete', 'colete'], identificacaoId: 'i-1' },
+      () => {},
+    );
+    parar();
+
+    expect(r.status).toBe('rejected');
+    expect(r.missingItems.map((i) => i.id)).toEqual(['capacete']);
+    expect(r.detectedItems.map((i) => i.id)).toEqual(['colete']);
+  });
+
+  /** Servidor antigo, sem o campo: `presente` volta a valer. */
+  it('cai para presente quando o servidor nao envia aceito', async () => {
+    const semAceito = {
+      epi: 'capacete',
+      rotulo: 'capacete',
+      presente: true,
+      confianca: 0.88,
+      frames_confirmados: 5,
+    };
+    mockarFetch(verificacao('APROVADA', [semAceito]));
+    const parar = responderPeloCanal('APROVADA');
+
+    const r = await new ServidorEpiVerificationService({ duracaoMinimaMs: 0 }).run(
+      { requiredItems: ['capacete'], identificacaoId: 'i-1' },
+      () => {},
+    );
+    parar();
+
+    expect(r.detectedItems.map((i) => i.id)).toEqual(['capacete']);
+  });
+
+  /**
+   * O servidor distingue "não estava usando" de "não deu para confirmar".
+   * A tela repete a frase dele em vez de recontar itens, que perderia
+   * exatamente essa distinção.
+   */
+  it('carrega o motivo da reprovacao escrito pelo servidor', async () => {
+    const v = verificacao('REPROVADA', [det('capacete', true, 0.3, false)]);
+    v.motivo_falha = 'não consegui confirmar: Capacete';
+    mockarFetch(v);
+    const parar = responderPeloCanal('REPROVADA');
+
+    const r = await new ServidorEpiVerificationService({ duracaoMinimaMs: 0 }).run(
+      { requiredItems: ['capacete'], identificacaoId: 'i-1' },
+      () => {},
+    );
+    parar();
+
+    expect(r.reason).toBe('não consegui confirmar: Capacete');
   });
 
   it('emite progresso inicial com os EPIs exigidos em aberto', async () => {

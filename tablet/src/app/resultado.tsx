@@ -9,6 +9,7 @@ import { Button, Text } from '@/components/ui';
 import { APP_MESSAGES } from '@/constants/messages';
 import { EpiChecklistGrid, EpiFigure } from '@/features/epi-detection/components';
 import { useVerificationSession } from '@/features/verification-session/hooks/VerificationSessionContext';
+import { hasFreshIdentification } from '@/features/verification-session/machine/sessionMachine';
 import { useHaptics } from '@/hooks/useHaptics';
 import { colors, spacing } from '@/theme';
 
@@ -27,15 +28,31 @@ export default function ResultScreen() {
   }, [reset, router]);
 
   /**
-   * Repete apenas a análise de EPI. A preparação é aberta aqui, antes de
-   * navegar: limpa o resultado anterior e preserva o funcionário identificado,
-   * de modo que o reconhecimento facial não se repete.
+   * Repete apenas a análise de EPI — quando ainda dá.
+   *
+   * A identificação vale três minutos no servidor. Dentro dessa janela,
+   * que cobre o caso real (a pessoa põe o capacete e tenta de novo), a
+   * preparação é reaberta preservando quem já foi reconhecido e o rosto
+   * não é pedido outra vez.
+   *
+   * Passado o prazo, o caminho é refazer o reconhecimento — de forma
+   * explícita e com o motivo na tela, nunca em silêncio. Antes isto caía
+   * na preparação com uma identificação vencida, e a tela dizia "nenhum
+   * funcionário identificado" para alguém que tinha acabado de ser
+   * identificado na tela anterior.
    */
   const retryEpi = useCallback(() => {
     impact();
+    if (!hasFreshIdentification(snapshot)) {
+      reset();
+      // O motivo viaja junto: a tela de identificação diz por que a pessoa
+      // está de volta ali, em vez de simplesmente aparecer.
+      router.replace({ pathname: '/identificacao', params: { motivo: 'expirou' } });
+      return;
+    }
     prepareEpiVerification();
     router.replace('/preparacao');
-  }, [impact, prepareEpiVerification, router]);
+  }, [impact, prepareEpiVerification, reset, router, snapshot]);
 
   if (!detection) {
     return (
@@ -60,14 +77,25 @@ export default function ResultScreen() {
   );
 
   const missingCount = detection.missingItems.length;
+  /**
+   * O motivo do servidor vence a contagem local, quando existe.
+   *
+   * "Faltaram 2 equipamentos" é verdade e é pouco: não diz se o
+   * equipamento não estava lá ou se o modelo o viu sem certeza
+   * suficiente. O servidor sabe a diferença e a escreve — "EPI ausente:
+   * Capacete · não consegui confirmar: Luvas". Recontar itens aqui
+   * jogaria fora justamente a informação que a pessoa precisa para saber
+   * se ajusta o capacete ou se chama o suporte.
+   */
   const rejectionReason =
-    missingCount > 0
+    detection.reason ||
+    (missingCount > 0
       ? `${APP_MESSAGES.result.rejectedReasonPrefix} ${missingCount} ${
           missingCount === 1
             ? APP_MESSAGES.result.rejectedReasonSuffixSingular
             : APP_MESSAGES.result.rejectedReasonSuffix
         }`
-      : APP_MESSAGES.result.rejectedLowConfidence;
+      : APP_MESSAGES.result.rejectedLowConfidence);
 
   return (
     <Screen

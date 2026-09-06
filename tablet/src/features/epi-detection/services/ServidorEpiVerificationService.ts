@@ -56,9 +56,22 @@ const DURACAO_MINIMA_MS = 900;
 interface DeteccaoServidor {
   epi: string;
   rotulo: string;
+  /** A borda VIU o equipamento. Não é o mesmo que a catraca ter aceitado. */
   presente: boolean;
   confianca: number;
   frames_confirmados: number | null;
+  /**
+   * Viu E com certeza suficiente para o limiar do servidor.
+   *
+   * É este campo que corresponde ao que a catraca considerou, e é por ele
+   * que a tela pinta verde. Usar `presente` pintava de verde um capacete
+   * reconhecido a 30% enquanto a catraca continuava trancada — a tela
+   * dizendo uma coisa e a porta fazendo outra.
+   *
+   * Opcional porque um servidor mais antigo não o envia; nesse caso
+   * `presente` volta a valer, que é o comportamento que ele tinha.
+   */
+  aceito?: boolean;
 }
 
 interface VerificacaoServidor {
@@ -396,8 +409,9 @@ export class ServidorEpiVerificationService implements EpiVerificationService {
         continue;
       }
       avaliados.push(d.epi);
-      const item = this.item(d.epi, d.presente, d.confianca);
-      (d.presente ? detectedItems : missingItems).push(item);
+      const aceito = d.aceito ?? d.presente;
+      const item = this.item(d.epi, aceito, d.confianca);
+      (aceito ? detectedItems : missingItems).push(item);
     }
 
     // A política de EPIs é do SERVIDOR, não do tablet. Se o admin acrescentou
@@ -423,6 +437,10 @@ export class ServidorEpiVerificationService implements EpiVerificationService {
       // A latência do servidor mede da abertura ao desfecho. A nossa inclui
       // rede e o GET do detalhe; é a que o usuário sentiu.
       processingTimeMs: verificacao.latencia_ms ?? processingTimeMs,
+      // A frase do servidor, palavra por palavra. Ele distingue "EPI
+      // ausente" de "não consegui confirmar", e essa distinção se perderia
+      // se a tela recontasse os itens por conta própria.
+      reason: verificacao.motivo_falha,
       engine: 'api',
     };
   }

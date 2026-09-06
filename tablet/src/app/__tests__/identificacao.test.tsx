@@ -26,8 +26,12 @@ const SessionProbe = () => {
 
 const mockReplace = jest.fn();
 
+/** Parâmetros da rota, para o teste do aviso de identificação vencida. */
+const mockParams: { motivo?: string } = {};
+
 jest.mock('expo-router', () => ({
   useRouter: () => ({ replace: mockReplace, push: jest.fn(), back: jest.fn() }),
+  useLocalSearchParams: () => mockParams,
 }));
 
 const identifiedOutcome = (
@@ -96,6 +100,32 @@ beforeEach(() => {
     initialSetupError: null,
     onRecognize: withRecognizeCount(async () => ({ kind: 'no_face' })),
   };
+});
+
+/**
+ * Quem chega aqui vindo de uma identificação vencida precisa saber por quê.
+ *
+ * Sem esta frase o salto era mudo: a pessoa reprovava por falta de
+ * capacete, tocava em "Verificar Novamente" e aparecia na tela de
+ * reconhecimento facial sem explicação — parecia que o sistema tinha
+ * esquecido quem ela era.
+ */
+describe('identificação facial — chegada por expiração', () => {
+  it('explica por que o rosto está sendo pedido de novo', async () => {
+    mockParams.motivo = 'expirou';
+
+    const { getByText } = await renderScreen(<IdentificationScreen />);
+
+    expect(getByText(APP_MESSAGES.face.expiredNotice)).toBeTruthy();
+  });
+
+  it('nao mostra o aviso em uma identificacao comum', async () => {
+    delete mockParams.motivo;
+
+    const { queryByText } = await renderScreen(<IdentificationScreen />);
+
+    expect(queryByText(APP_MESSAGES.face.expiredNotice)).toBeNull();
+  });
 });
 
 describe('identificação facial — estado inicial', () => {

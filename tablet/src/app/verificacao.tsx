@@ -10,7 +10,10 @@ import { APP_MESSAGES } from '@/constants/messages';
 import { EpiFigure } from '@/features/epi-detection/components';
 import { useRequiredEpis } from '@/features/epi-detection/hooks/useRequiredEpis';
 import { useVerificationSession } from '@/features/verification-session/hooks/VerificationSessionContext';
-import { hasIdentifiedEmployee } from '@/features/verification-session/machine/sessionMachine';
+import {
+  hasFreshIdentification,
+  hasIdentifiedEmployee,
+} from '@/features/verification-session/machine/sessionMachine';
 import { colors, radii, spacing } from '@/theme';
 
 export default function VerificationScreen() {
@@ -63,12 +66,34 @@ export default function VerificationScreen() {
     router.replace('/');
   }, [reset, router]);
 
+  /**
+   * "Tentar novamente" depois de uma falha. Volta para a preparação
+   * enquanto a identificação ainda vale; passada a validade, pede o rosto
+   * de novo em vez de mandar a pessoa para uma preparação que a recusaria.
+   */
   const backToPreparation = useCallback(() => {
     hasStartedRef.current = false;
+    if (!hasFreshIdentification(snapshot)) {
+      reset();
+      router.replace({ pathname: '/identificacao', params: { motivo: 'expirou' } });
+      return;
+    }
     router.replace('/preparacao');
-  }, [router]);
+  }, [reset, router, snapshot]);
 
-  if (!isIdentified) {
+  /**
+   * Falha vem ANTES da checagem de identidade, e a ordem é o conserto.
+   *
+   * `error` não está entre os estados que contam como identificado, então
+   * qualquer falha na verificação — servidor fora do ar, câmera muda,
+   * identificação vencida — caía no early return abaixo e a tela anunciava
+   * "nenhum funcionário identificado". A pessoa tinha acabado de ser
+   * reconhecida; a mensagem escondia a causa real e sugeria a única coisa
+   * que não era o problema.
+   */
+  const isFailure = state === 'error' || state === 'cancelled';
+
+  if (!isIdentified && !isFailure) {
     return (
       <Screen>
         <View style={styles.centered}>
@@ -85,7 +110,7 @@ export default function VerificationScreen() {
   }
 
   const renderBody = () => {
-    if (state === 'error' || state === 'cancelled') {
+    if (isFailure) {
       const isError = state === 'error';
       return (
         <StateView

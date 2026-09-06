@@ -158,3 +158,41 @@ export const isSessionRunning = (state: SessionState): boolean => CANCELLABLE.in
 /** Verdadeiro quando já existe um funcionário identificado na sessão. */
 export const hasIdentifiedEmployee = (snapshot: SessionSnapshot): boolean =>
   snapshot.employee !== null && IDENTIFIED.includes(snapshot.state);
+
+/**
+ * Sobra de validade exigida para reaproveitar a identificação.
+ *
+ * Não basta ela valer neste instante: entre decidir repetir, andar até a
+ * marcação do chão e a verificação abrir no servidor passam alguns
+ * segundos. Aceitar uma identificação que vence em meio segundo trocaria
+ * a tela honesta de "aproxime o rosto" por um erro de servidor no meio do
+ * caminho, que é bem pior de entender.
+ */
+export const IDENTIFICATION_MIN_REMAINING_MS = 5000;
+
+/**
+ * Verdadeiro quando dá para repetir a verificação de EPI sem repetir o
+ * reconhecimento facial.
+ *
+ * Não olha o estado da máquina, e isso é de propósito: precisa responder
+ * também quando a sessão caiu em `error`, que é exatamente o momento em
+ * que a tela tem de escolher entre "tenta o EPI de novo" e "aproxime o
+ * rosto".
+ */
+export const hasFreshIdentification = (
+  snapshot: SessionSnapshot,
+  now: number = Date.now(),
+): boolean => {
+  if (snapshot.employee === null) {
+    return false;
+  }
+  if (!snapshot.identificationExpiresAt) {
+    // Sem validade declarada é o caminho sem servidor (mock, demonstração
+    // offline): não existe token para vencer, então continua servindo.
+    // Quem manda aqui é o prazo, não a presença do id — exigir o id
+    // quebraria a repetição justamente onde ela nunca falha.
+    return true;
+  }
+  const expiraEm = Date.parse(snapshot.identificationExpiresAt);
+  return Number.isFinite(expiraEm) && expiraEm - now > IDENTIFICATION_MIN_REMAINING_MS;
+};

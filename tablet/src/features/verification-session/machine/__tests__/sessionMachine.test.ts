@@ -5,7 +5,9 @@ import type { RecognizedEmployee } from '@/features/face-recognition/types';
 import type { AnySessionEvent, SessionSnapshot } from '../../types';
 import {
   createInitialSnapshot,
+  hasFreshIdentification,
   hasIdentifiedEmployee,
+  IDENTIFICATION_MIN_REMAINING_MS,
   isSessionRunning,
   sessionReducer,
 } from '../sessionMachine';
@@ -338,5 +340,54 @@ describe('sessionMachine — auxiliares', () => {
         run({ type: 'FACE_SCANNING' }, { type: 'FACE_UNKNOWN', confidence: 0.2 }),
       ),
     ).toBe(false);
+  });
+
+  /**
+   * O que decide se repetir a verificação de EPI pede o rosto de novo.
+   *
+   * O caso que motivou isto: reprovado por falta de capacete, a pessoa põe
+   * o capacete e toca "Verificar Novamente". Dentro do minuto de validade
+   * a identificação anterior serve; passado o minuto, o servidor recusaria
+   * e o certo é pedir o rosto de forma explícita — não mandar a pessoa
+   * para uma preparação que vai dizer "nenhum funcionário identificado".
+   */
+  describe('hasFreshIdentification', () => {
+    const AGORA = Date.parse('2026-09-06T12:00:00Z');
+
+    const comValidade = (expiraEm: string | null): SessionSnapshot => ({
+      ...run(...REJECT),
+      identificationId: 'ident-1',
+      identificationExpiresAt: expiraEm,
+    });
+
+    it('aceita identificação com folga de sobra', () => {
+      const daquiA30s = new Date(AGORA + 30_000).toISOString();
+      expect(hasFreshIdentification(comValidade(daquiA30s), AGORA)).toBe(true);
+    });
+
+    it('recusa identificação vencida', () => {
+      const venceuHa1s = new Date(AGORA - 1000).toISOString();
+      expect(hasFreshIdentification(comValidade(venceuHa1s), AGORA)).toBe(false);
+    });
+
+    /**
+     * Vencer "daqui a pouco" conta como vencida. Entre tocar no botão,
+     * andar até a marcação e o POST chegar ao servidor passam segundos —
+     * aproveitar uma sobra de meio segundo trocaria a tela honesta por um
+     * erro de servidor no meio do caminho.
+     */
+    it('recusa identificação que vence dentro da margem', () => {
+      const quaseLa = new Date(AGORA + IDENTIFICATION_MIN_REMAINING_MS - 1).toISOString();
+      expect(hasFreshIdentification(comValidade(quaseLa), AGORA)).toBe(false);
+    });
+
+    /** Sem servidor não há token para vencer: a repetição segue valendo. */
+    it('aceita quando não há validade declarada', () => {
+      expect(hasFreshIdentification(comValidade(null), AGORA)).toBe(true);
+    });
+
+    it('recusa quando não há funcionário nenhum', () => {
+      expect(hasFreshIdentification(createInitialSnapshot(), AGORA)).toBe(false);
+    });
   });
 });

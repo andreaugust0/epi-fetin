@@ -62,6 +62,16 @@ export const APP_MESSAGES = {
 
   face: {
     title: 'Identificação Facial',
+    /**
+     * Explica por que a pessoa foi trazida de volta para cá.
+     *
+     * Sem esta frase, quem reprovava por falta de capacete e tocava em
+     * "Verificar Novamente" era jogado na tela de reconhecimento sem
+     * explicação nenhuma — parecia que o sistema tinha esquecido quem ela
+     * era, e não que um prazo tinha vencido.
+     */
+    expiredNotice:
+      'Sua identificação expirou. Aproxime o rosto para continuar de onde parou.',
     instruction: 'Posicione seu rosto em frente à câmera.',
     instructionDetail: 'Mantenha-se na posição e olhe diretamente para a câmera.',
     startButton: 'Iniciar Reconhecimento',

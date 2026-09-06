@@ -38,6 +38,15 @@ export interface EpiDetectionResult {
   /** Data/hora em ISO 8601. */
   analyzedAt: string;
   processingTimeMs: number;
+  /**
+   * Motivo da reprovação, na frase de quem decidiu.
+   *
+   * Só o servidor produz isto. Ele sabe algo que a tela não tem como
+   * recontar a partir da lista: se o equipamento faltou ou se o modelo o
+   * viu sem certeza suficiente. Ausente no caminho mock, onde a contagem
+   * local de itens é toda a verdade disponível.
+   */
+  reason?: string | null;
   engine: DetectionEngine;
 }
 

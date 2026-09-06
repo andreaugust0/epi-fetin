@@ -7,7 +7,7 @@ import Animated, {
   withRepeat,
   withTiming,
 } from 'react-native-reanimated';
-import Svg, { Circle, Ellipse, G, Path, Rect } from 'react-native-svg';
+import Svg, { Circle, G, Path, Rect } from 'react-native-svg';
 
 import { colors } from '@/theme';
 
@@ -33,32 +33,43 @@ export interface EpiFigureProps {
 }
 
 /**
- * O corpo vive num sistema de 200×330 e é escalado pelo `viewBox`. As
- * coordenadas abaixo são conferíveis a olho: topo da cabeça y=26, queixo
- * y=94, cintura y=196, chão y=311.
+ * O corpo vive num sistema de 200×372 e é escalado pelo `viewBox`. As
+ * coordenadas são conferíveis a olho: topo da cabeça y=8, queixo y=76,
+ * ombros y=86, virilha y=242, chão y=352.
  */
 const LARGURA = 200;
-const ALTURA = 330;
+const ALTURA = 372;
 
 /**
- * Silhueta base — sempre visível, sempre da mesma cor. É a referência que
- * dá sentido às cores por cima: sem ela, sete manchas soltas não formam
- * uma pessoa.
+ * Silhueta base, no desenho do pictograma de sinalização — a mesma figura
+ * de placa de banheiro e de saída de emergência.
+ *
+ * A primeira versão era feita de blocos separados: cabeça, tronco, dois
+ * braços, duas pernas, mãos e pés como círculos soltos. Lia como um robô.
+ * Aqui os braços não são peças à parte: eles fazem parte do mesmo bloco de
+ * ombros, e o que os separa do tronco são duas FENDAS pintadas na cor do
+ * fundo. É esse detalhe que faz a figura parecer uma pessoa em vez de um
+ * boneco montado.
+ *
+ * Por isso `fundo` é obrigatório aqui: as fendas não são transparência,
+ * são tinta da cor de trás. Num fundo diferente do informado elas
+ * apareceriam como riscos.
  */
-const Silhueta = ({ cor }: { cor: string }) => (
-  <G fill={cor}>
-    <Circle cx={100} cy={60} r={34} />
-    <Rect x={88} y={88} width={24} height={18} />
-    <Rect x={64} y={100} width={72} height={96} rx={20} />
-    <Rect x={46} y={104} width={20} height={88} rx={10} />
-    <Rect x={134} y={104} width={20} height={88} rx={10} />
-    <Circle cx={56} cy={200} r={14} />
-    <Circle cx={144} cy={200} r={14} />
-    <Rect x={76} y={194} width={20} height={96} rx={10} />
-    <Rect x={104} y={194} width={20} height={96} rx={10} />
-    <Ellipse cx={82} cy={298} rx={15} ry={11} />
-    <Ellipse cx={118} cy={298} rx={15} ry={11} />
-  </G>
+const Silhueta = ({ cor, fundo }: { cor: string; fundo: string }) => (
+  <>
+    <G fill={cor}>
+      <Circle cx={100} cy={42} r={34} />
+      <Rect x={38} y={86} width={124} height={140} rx={30} />
+      <Rect x={74} y={122} width={52} height={130} />
+      <Rect x={74} y={242} width={23} height={110} rx={11} />
+      <Rect x={103} y={242} width={23} height={110} rx={11} />
+    </G>
+    <G fill={fundo}>
+      <Rect x={68} y={120} width={6} height={110} />
+      <Rect x={126} y={120} width={6} height={110} />
+      <Rect x={97} y={240} width={6} height={30} />
+    </G>
+  </>
 );
 
 /**
@@ -70,42 +81,44 @@ const Silhueta = ({ cor }: { cor: string }) => (
  * linhas se cruzam, e a leitura à distância, que é a única que importa
  * numa catraca, vira quebra-cabeça. Pintando a peça no lugar dela, "o que
  * está vermelho" se responde sem ler nada.
+ *
+ * Luvas e botas aproveitam a forma do pictograma em vez de acrescentar
+ * peças: são a ponta do braço e a ponta da perna, pintadas. Uma mão
+ * desenhada à parte destoaria de uma figura que não tem mãos.
  */
 const PECAS: Record<EpiId, ReactNode> = {
   capacete: (
     <>
-      <Path d="M 66 60 A 34 34 0 0 1 134 60 Z" />
-      <Rect x={62} y={53} width={76} height={10} rx={5} />
+      <Path d="M 66 42 A 34 34 0 0 1 134 42 Z" />
+      <Rect x={60} y={35} width={80} height={10} rx={5} />
     </>
   ),
-  oculos: <Rect x={74} y={64} width={52} height={13} rx={6.5} />,
-  mascara: <Rect x={78} y={82} width={44} height={16} rx={8} />,
+  oculos: <Rect x={76} y={48} width={48} height={13} rx={6.5} />,
+  mascara: <Rect x={80} y={63} width={40} height={15} rx={7.5} />,
   auricular: (
     <>
-      <Rect x={55} y={64} width={12} height={26} rx={6} />
-      <Rect x={133} y={64} width={12} height={26} rx={6} />
+      <Rect x={61} y={46} width={13} height={26} rx={6.5} />
+      <Rect x={126} y={46} width={13} height={26} rx={6.5} />
     </>
   ),
-  colete: <Rect x={66} y={104} width={68} height={74} rx={16} />,
+  colete: <Rect x={74} y={102} width={52} height={106} rx={8} />,
   luvas: (
     <>
-      <Circle cx={56} cy={200} r={16} />
-      <Circle cx={144} cy={200} r={16} />
+      <Rect x={38} y={180} width={30} height={46} rx={15} />
+      <Rect x={132} y={180} width={30} height={46} rx={15} />
     </>
   ),
   botas: (
     <>
-      <Rect x={75} y={262} width={22} height={30} rx={7} />
-      <Rect x={103} y={262} width={22} height={30} rx={7} />
-      <Ellipse cx={82} cy={298} rx={16} ry={13} />
-      <Ellipse cx={118} cy={298} rx={16} ry={13} />
+      <Rect x={74} y={302} width={23} height={50} rx={11} />
+      <Rect x={103} y={302} width={23} height={50} rx={11} />
     </>
   ),
 };
 
 /**
- * Ordem de desenho, não de importância: as peças de baixo primeiro, para
- * o capacete ficar por cima da cabeça e as luvas por cima das mãos.
+ * Ordem de desenho, não de importância: as de baixo primeiro, para o
+ * capacete cobrir o topo da cabeça e os óculos cobrirem a máscara.
  */
 const ORDEM: readonly EpiId[] = [
   'botas',
@@ -179,7 +192,7 @@ export const EpiFigure = ({
         opacidade — a árvore nativa fica parada.
       */}
       <Svg style={StyleSheet.absoluteFill} viewBox={`0 0 ${LARGURA} ${ALTURA}`}>
-        <Silhueta cor={corpo} />
+        <Silhueta cor={corpo} fundo={contorno} />
       </Svg>
 
       <Animated.View style={[StyleSheet.absoluteFill, estiloPulso]}>
@@ -190,7 +203,7 @@ export const EpiFigure = ({
               testID={`epi-figura-${id}`}
               fill={corDe(id)}
               stroke={contorno}
-              strokeWidth={3}
+              strokeWidth={2.5}
             >
               {PECAS[id]}
             </G>

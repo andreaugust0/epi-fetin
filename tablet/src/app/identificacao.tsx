@@ -1,10 +1,11 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import type { CameraView } from 'expo-camera';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { CameraViewport } from '@/components/camera';
+import { InlineNotice } from '@/components/feedback';
 import { Screen, ScreenHeader, StepIndicator } from '@/components/layout';
 import { Button, Text } from '@/components/ui';
 import { APP_MESSAGES } from '@/constants/messages';
@@ -68,6 +69,12 @@ const RED_CARD_COPY: Record<'not-identified' | 'ambiguous' | 'no-consent', { tit
 
 export default function IdentificationScreen() {
   const router = useRouter();
+  /**
+   * Quem chega aqui vindo de uma identificação vencida traz `motivo` na
+   * rota. É o que transforma um salto inexplicado numa frase.
+   */
+  const { motivo } = useLocalSearchParams<{ motivo?: string }>();
+  const veioDeExpiracao = motivo === 'expirou';
   const { cancel, reset, identifyEmployee } = useVerificationSession();
   const { impact } = useHaptics();
   const metrics = useTerminalMetrics();
@@ -156,6 +163,14 @@ export default function IdentificationScreen() {
       <ScreenHeader title={APP_MESSAGES.face.title} onBack={goHome} tone="dark" />
 
       <View style={styles.body}>
+        {veioDeExpiracao ? (
+          <InlineNotice
+            message={APP_MESSAGES.face.expiredNotice}
+            icon="clock-alert-outline"
+            tone="warning"
+          />
+        ) : null}
+
         {/*
           O visor nunca desmonta, nem quando ninguém é identificado: é olhando
           para ele que a pessoa corrige posição, distância e enquadramento. Sem
