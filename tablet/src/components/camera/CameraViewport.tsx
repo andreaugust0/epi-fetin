@@ -12,6 +12,24 @@ export interface CameraViewportProps {
   /** Sobreposições do visor: moldura, guia facial, legendas. */
   children?: ReactNode;
   style?: StyleProp<ViewStyle>;
+  /**
+   * Liga a câmera de verdade. Falso mantém o visor com a mesma moldura e a
+   * mesma silhueta, mas sem nenhuma view nativa de câmera dentro dele.
+   *
+   * Existe por causa de um travamento concreto. `useCameraAvailability`
+   * começa em `checking`, então o primeiro render põe o substituto na
+   * posição 0 e a resposta assíncrona TROCA essa posição pela `CameraView`
+   * nativa. Numa tela que vive segundos, a troca acontece e pronto. Numa que
+   * vive menos de um segundo — que é o caso quando o servidor decide rápido —
+   * a troca cai em cima do desmonte da superfície e o Fabric aborta com
+   * `addViewAt: failed to insert view […] at index 0 · The specified child
+   * already has a parent`.
+   *
+   * Onde a câmera é usada de fato (identificação facial), ela continua ligada
+   * e a tela vive tempo suficiente. Onde ela é só enfeite, `live={false}`
+   * elimina a troca inteira: a posição 0 passa a ser sempre a mesma view.
+   */
+  live?: boolean;
 }
 
 /**
@@ -26,17 +44,20 @@ export interface CameraViewportProps {
  * fica `null` sempre que o placeholder está no lugar da câmera real.
  */
 export const CameraViewport = forwardRef<CameraView, CameraViewportProps>(
-  ({ children, style }, ref) => {
+  ({ children, style, live = true }, ref) => {
     const [permission, requestPermission] = useCameraPermissions();
     const availability = useCameraAvailability();
 
-    const showCamera = availability === 'available' && Boolean(permission?.granted);
+    const showCamera = live && availability === 'available' && Boolean(permission?.granted);
 
     useEffect(() => {
+      if (!live) {
+        return;
+      }
       if (permission && !permission.granted && permission.canAskAgain) {
         void requestPermission();
       }
-    }, [permission, requestPermission]);
+    }, [live, permission, requestPermission]);
 
     return (
       <View testID="camera-viewport" style={[styles.viewport, style]}>
@@ -45,9 +66,17 @@ export const CameraViewport = forwardRef<CameraView, CameraViewportProps>(
         ) : (
           <View style={[StyleSheet.absoluteFill, styles.placeholder]}>
             <MaterialCommunityIcons name="account-outline" size={120} color={colors.overlayBorder} />
-            <Text variant="caption" color={colors.slate[400]} align="center">
-              {APP_MESSAGES.camera.unavailableTitle}
-            </Text>
+            {/*
+              O aviso só faz sentido quando a câmera era para estar ligada e
+              não está. Com `live={false}` ela está desligada de propósito, e
+              dizer "indisponível" mandaria a manutenção procurar um defeito
+              que não existe.
+            */}
+            {live ? (
+              <Text variant="caption" color={colors.slate[400]} align="center">
+                {APP_MESSAGES.camera.unavailableTitle}
+              </Text>
+            ) : null}
           </View>
         )}
 
