@@ -105,7 +105,7 @@ describe('ServidorEpiVerificationService', () => {
     );
     const parar = responderPeloCanal('APROVADA');
 
-    const r = await new ServidorEpiVerificationService().run(
+    const r = await new ServidorEpiVerificationService({ duracaoMinimaMs: 0 }).run(
       { requiredItems: ['capacete', 'colete', 'oculos'], identificacaoId: 'i-1' },
       () => {},
     );
@@ -136,7 +136,7 @@ describe('ServidorEpiVerificationService', () => {
     );
     const parar = responderPeloCanal('REPROVADA');
 
-    const r = await new ServidorEpiVerificationService().run(
+    const r = await new ServidorEpiVerificationService({ duracaoMinimaMs: 0 }).run(
       {
         requiredItems: ['capacete', 'colete', 'oculos', 'luvas'],
         identificacaoId: 'i-1',
@@ -160,7 +160,7 @@ describe('ServidorEpiVerificationService', () => {
     );
     const parar = responderPeloCanal('APROVADA');
 
-    const r = await new ServidorEpiVerificationService().run(
+    const r = await new ServidorEpiVerificationService({ duracaoMinimaMs: 0 }).run(
       { requiredItems: ['capacete', 'colete'], identificacaoId: 'i-1' },
       () => {},
     );
@@ -179,7 +179,7 @@ describe('ServidorEpiVerificationService', () => {
     );
     const parar = responderPeloCanal('APROVADA');
 
-    const r = await new ServidorEpiVerificationService().run(
+    const r = await new ServidorEpiVerificationService({ duracaoMinimaMs: 0 }).run(
       { requiredItems: ['capacete'], identificacaoId: 'i-1' },
       () => {},
     );
@@ -192,7 +192,7 @@ describe('ServidorEpiVerificationService', () => {
     mockarFetch(verificacao('ERRO', []), 503);
 
     await expect(
-      new ServidorEpiVerificationService().run(
+      new ServidorEpiVerificationService({ duracaoMinimaMs: 0 }).run(
         { requiredItems: ['capacete'], identificacaoId: 'i-1' },
         () => {},
       ),
@@ -203,7 +203,7 @@ describe('ServidorEpiVerificationService', () => {
     mockarFetch(verificacao('ERRO', []), 409);
 
     await expect(
-      new ServidorEpiVerificationService().run(
+      new ServidorEpiVerificationService({ duracaoMinimaMs: 0 }).run(
         { requiredItems: ['capacete'], identificacaoId: 'i-velho' },
         () => {},
       ),
@@ -215,7 +215,7 @@ describe('ServidorEpiVerificationService', () => {
     const parar = responderPeloCanal('EXPIRADA');
 
     await expect(
-      new ServidorEpiVerificationService().run(
+      new ServidorEpiVerificationService({ duracaoMinimaMs: 0 }).run(
         { requiredItems: ['capacete'], identificacaoId: 'i-1' },
         () => {},
       ),
@@ -228,7 +228,7 @@ describe('ServidorEpiVerificationService', () => {
     mockarFetch(verificacao('APROVADA', []));
 
     await expect(
-      new ServidorEpiVerificationService().run(
+      new ServidorEpiVerificationService({ duracaoMinimaMs: 0 }).run(
         { requiredItems: ['capacete'] },
         () => {},
       ),
@@ -258,7 +258,7 @@ describe('ServidorEpiVerificationService', () => {
     });
     global.fetch = fetchMock as unknown as typeof fetch;
 
-    await new ServidorEpiVerificationService().run(
+    await new ServidorEpiVerificationService({ duracaoMinimaMs: 0 }).run(
       { requiredItems: ['capacete'], identificacaoId: 'i-1' },
       () => {},
     );
@@ -288,7 +288,7 @@ describe('ServidorEpiVerificationService', () => {
     });
     global.fetch = fetchMock as unknown as typeof fetch;
 
-    const r = await new ServidorEpiVerificationService().run(
+    const r = await new ServidorEpiVerificationService({ duracaoMinimaMs: 0 }).run(
       { requiredItems: ['capacete'], identificacaoId: 'i-1' },
       () => {},
     );
@@ -302,7 +302,7 @@ describe('ServidorEpiVerificationService', () => {
     );
     const parar = responderPeloCanal('APROVADA');
 
-    await new ServidorEpiVerificationService().run(
+    await new ServidorEpiVerificationService({ duracaoMinimaMs: 0 }).run(
       { requiredItems: ['capacete'], identificacaoId: 'i-42' },
       () => {},
     );
@@ -321,17 +321,20 @@ describe('ServidorEpiVerificationService', () => {
     const parar = responderPeloCanal('APROVADA');
     const eventos: unknown[] = [];
 
-    await new ServidorEpiVerificationService().run(
+    await new ServidorEpiVerificationService({ duracaoMinimaMs: 0 }).run(
       { requiredItems: ['capacete', 'colete'], identificacaoId: 'i-1' },
       (e) => eventos.push(e),
     );
     parar();
 
-    expect(eventos).toHaveLength(1);
+    expect(eventos).toHaveLength(2);
     expect(eventos[0]).toMatchObject({
       type: 'EPI_PROGRESS',
       progress: 0,
       currentItem: 'capacete',
     });
+    // O progresso precisa fechar em 1: sem isso a barra fica parada e a
+    // tela de resultado entra por cima de uma que nunca terminou.
+    expect(eventos[1]).toMatchObject({ progress: 1, currentItem: null });
   });
 });

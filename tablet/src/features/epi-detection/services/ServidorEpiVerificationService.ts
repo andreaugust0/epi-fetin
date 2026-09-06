@@ -39,6 +39,20 @@ import type {
 
 const TIMEOUT_PADRAO_MS = 25_000;
 
+/**
+ * Piso de duração da verificação.
+ *
+ * O servidor decide em dezenas de milissegundos quando a Raspberry responde
+ * rápido. Devolver o resultado nesse tempo tem dois problemas: a tela de
+ * progresso mal chega a montar antes de a de resultado entrar — e o Fabric
+ * reclama de montar uma árvore que ainda está saindo —, e para quem opera o
+ * terminal o resultado pisca sem que nada pareça ter acontecido.
+ *
+ * O mock levava 550 ms por equipamento pelo mesmo motivo. Aqui é um piso, não
+ * uma espera fixa: quando o servidor demora mais que isso, não custa nada.
+ */
+const DURACAO_MINIMA_MS = 900;
+
 interface DeteccaoServidor {
   epi: string;
   rotulo: string;
@@ -68,6 +82,8 @@ interface AvisoDesfecho {
 
 export interface ServidorEpiVerificationServiceOptions {
   timeoutMs?: number;
+  /** Piso de duração. Os testes passam 0 para não esperar à toa. */
+  duracaoMinimaMs?: number;
 }
 
 /**
@@ -106,9 +122,14 @@ const mapearStatus = (status: VerificacaoServidor['status']): DetectionStatus =>
 
 export class ServidorEpiVerificationService implements EpiVerificationService {
   private readonly timeoutMs: number;
+  private readonly duracaoMinimaMs: number;
 
-  constructor({ timeoutMs }: ServidorEpiVerificationServiceOptions = {}) {
+  constructor({
+    timeoutMs,
+    duracaoMinimaMs,
+  }: ServidorEpiVerificationServiceOptions = {}) {
     this.timeoutMs = timeoutMs ?? TIMEOUT_PADRAO_MS;
+    this.duracaoMinimaMs = duracaoMinimaMs ?? DURACAO_MINIMA_MS;
   }
 
   async run(
@@ -162,6 +183,20 @@ export class ServidorEpiVerificationService implements EpiVerificationService {
       const verificacao = aviso
         ? await this.buscarDetalhe(baseUrl, verificacaoId, signal)
         : await this.consultarAteConcluir(baseUrl, verificacaoId, signal);
+
+      // Fecha o progresso antes de sair. Sem este evento a barra fica
+      // parada no zero e a tela seguinte entra por cima dela.
+      onEvent({
+        type: 'EPI_PROGRESS',
+        progress: 1,
+        items: requiredItems.map((id) => this.item(id, false, 0)),
+        currentItem: null,
+      });
+
+      const decorrido = Date.now() - inicio;
+      if (decorrido < this.duracaoMinimaMs) {
+        await new Promise((r) => setTimeout(r, this.duracaoMinimaMs - decorrido));
+      }
 
       return this.montarResultado(verificacao, requiredItems, Date.now() - inicio);
     } finally {
