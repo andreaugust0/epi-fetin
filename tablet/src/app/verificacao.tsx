@@ -2,23 +2,23 @@ import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { CameraViewport, ScanFrame } from '@/components/camera';
+import { ScanFrame } from '@/components/camera';
 import { StateView } from '@/components/feedback';
 import { Screen, ScreenHeader, StepIndicator } from '@/components/layout';
 import { ConfidenceBar, Text } from '@/components/ui';
 import { APP_MESSAGES } from '@/constants/messages';
-import { EpiChecklistItem } from '@/features/epi-detection/components';
+import { EpiFigure } from '@/features/epi-detection/components';
 import { useRequiredEpis } from '@/features/epi-detection/hooks/useRequiredEpis';
 import { useVerificationSession } from '@/features/verification-session/hooks/VerificationSessionContext';
 import { hasIdentifiedEmployee } from '@/features/verification-session/machine/sessionMachine';
-import { colors, spacing } from '@/theme';
+import { colors, radii, spacing } from '@/theme';
 
 export default function VerificationScreen() {
   const router = useRouter();
   const { requiredEpis } = useRequiredEpis();
   const { snapshot, startEpiVerification, cancel, reset } = useVerificationSession();
 
-  const { state, employee, progress, items, currentItem } = snapshot;
+  const { state, employee, progress, items } = snapshot;
   const isDetecting = state === 'epi_detecting';
   const isIdentified = hasIdentifiedEmployee(snapshot);
 
@@ -106,9 +106,27 @@ export default function VerificationScreen() {
 
     return (
       <View style={styles.layout}>
-        <CameraViewport style={styles.viewport}>
+        {/*
+          Sem câmera nenhuma aqui. Nesta etapa quem olha para a pessoa é a
+          câmera da Raspberry; a do tablet nunca teve `ref` nem tirou foto —
+          era enfeite, e um enfeite caro: mantê-la abria uma segunda sessão
+          de câmera e trocava a view da posição 0 no meio de uma tela que
+          dura menos de um segundo, que foi o que derrubava o app.
+
+          No lugar dela, o boneco: mostra QUAIS equipamentos estão sendo
+          conferidos, que é a informação que a pessoa na catraca precisa —
+          e que um retrato dela mesma nunca deu.
+        */}
+        <View style={styles.viewport}>
+          <EpiFigure
+            items={items}
+            analyzing={isDetecting}
+            tone="dark"
+            backgroundColor={colors.scanner.viewport}
+            style={styles.figura}
+          />
           <ScanFrame active={isDetecting} />
-        </CameraViewport>
+        </View>
 
         <View style={styles.panel}>
           <Text variant="heading" color={colors.white} align="center">
@@ -135,18 +153,14 @@ export default function VerificationScreen() {
             />
           </View>
 
-          <View style={styles.checklist}>
-            {items.map((item) => (
-              <View key={item.id} style={styles.checklistCell}>
-                <EpiChecklistItem
-                  item={item}
-                  tone="dark"
-                  pending={isDetecting && !item.detected}
-                  scanning={item.id === currentItem && isDetecting}
-                />
-              </View>
-            ))}
-          </View>
+          {/*
+            A lista de sete itens saiu daqui. Durante a análise ela mostrava
+            sete linhas idênticas dizendo "aguardando" — o servidor decide
+            tudo de uma vez, então não há progresso por equipamento para
+            listar. O boneco já diz o que está sendo conferido, e a lista
+            com confiança por EPI aparece no resultado, quando existe
+            resultado.
+          */}
         </View>
       </View>
     );
@@ -171,9 +185,18 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     padding: spacing.md,
   },
+  /** Mesma moldura escura do antigo visor — só o conteúdo mudou. */
   viewport: {
     flex: 1,
     minHeight: 180,
+    borderRadius: radii.xxl,
+    overflow: 'hidden',
+    backgroundColor: colors.scanner.viewport,
+    justifyContent: 'center',
+    paddingVertical: spacing.xl,
+  },
+  figura: {
+    marginVertical: spacing.lg,
   },
   panel: {
     gap: spacing.sm,
@@ -186,15 +209,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-  },
-  /** Duas colunas: em retrato os sete equipamentos empilhados não caberiam. */
-  checklist: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-  },
-  checklistCell: {
-    width: '48.5%',
   },
   centered: {
     flex: 1,

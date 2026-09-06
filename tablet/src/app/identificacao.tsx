@@ -37,10 +37,17 @@ type FaceOutcome =
 /**
  * Tempo que o cartão de sucesso fica visível antes de avançar sozinho.
  *
+ * Três segundos: o suficiente para a pessoa ler o próprio nome e confiar
+ * que foi reconhecida, curto o bastante para não parecer uma tela de
+ * carregamento. Eram cinco, e cinco segundos parados com um botão embaixo
+ * convidam ao toque — o botão ali era "Voltar ao Início", ou seja, o
+ * impulso mais natural desfazia justamente o que tinha acabado de dar
+ * certo.
+ *
  * Só existe para o caminho de identificado — as outras saídas (desconhecido,
  * sem rosto, erro) exigem uma ação explícita, sem temporizador nenhum.
  */
-const IDENTIFICATION_SUCCESS_DELAY_MS = 5000;
+const IDENTIFICATION_SUCCESS_DELAY_MS = 3000;
 
 /** Título/dica dos três desfechos "vermelhos" que compartilham o mesmo cartão. */
 const RED_CARD_COPY: Record<'not-identified' | 'ambiguous' | 'no-consent', { title: string; hint: string; checks?: readonly string[] }> = {
@@ -241,8 +248,11 @@ export default function IdentificationScreen() {
 
         <View style={styles.actions}>
           {/* Enquanto a tentativa está em andamento não há ação alguma: nada
-              a tocar duas vezes. Falha de carregamento também não oferece
-              "Iniciar" — não há o que tentar sem detector/modelo. */}
+              a tocar duas vezes. Reconhecido também não oferece nada — a tela
+              avança sozinha em três segundos, e o único botão que cabia ali
+              era "Voltar ao Início", que desfaria o reconhecimento por
+              impulso. Falha de carregamento não oferece "Iniciar": não há o
+              que tentar sem detector/modelo. */}
           {setupFailed ? (
             <Button
               label={APP_MESSAGES.face.backHomeButton}
@@ -250,14 +260,7 @@ export default function IdentificationScreen() {
               size="large"
               onPress={goHome}
             />
-          ) : isRunning ? null : isIdentified ? (
-            <Button
-              label={APP_MESSAGES.face.backHomeButton}
-              variant="secondary"
-              size="large"
-              onPress={goHome}
-            />
-          ) : needsRetry ? (
+          ) : isRunning || isIdentified ? null : needsRetry ? (
             <>
               <Button
                 label={APP_MESSAGES.face.retryButton}

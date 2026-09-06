@@ -464,20 +464,41 @@ describe('identificação facial — avanço automático após sucesso', () => {
     expect(mockReplace).not.toHaveBeenCalled();
   });
 
-  it('oferece cancelar mesmo já identificado', async () => {
-    const { getByText } = await renderIdentified();
+  /**
+   * Nenhum botão enquanto o cartão verde está na tela — e isto é a
+   * checagem, não um detalhe.
+   *
+   * Havia ali um "Voltar ao Início". Ficar três segundos parado olhando
+   * uma tela com um único botão embaixo convida ao toque, e o toque
+   * desfazia exatamente o que tinha acabado de dar certo: o
+   * reconhecimento. Quem quer sair de verdade usa o "voltar" do cabeçalho.
+   */
+  it('nao oferece botao nenhum enquanto avanca sozinho', async () => {
+    const { queryByText } = await renderIdentified();
 
-    expect(getByText(APP_MESSAGES.face.backHomeButton)).toBeTruthy();
+    expect(queryByText(APP_MESSAGES.face.backHomeButton)).toBeNull();
+    expect(queryByText(APP_MESSAGES.face.retryButton)).toBeNull();
   });
 
-  it('navega para /preparacao depois de ~5 segundos', async () => {
+  it('navega para /preparacao depois de ~3 segundos', async () => {
     await renderIdentified();
 
     await act(async () => {
-      jest.advanceTimersByTime(5000);
+      jest.advanceTimersByTime(3000);
     });
 
     expect(mockReplace).toHaveBeenCalledWith('/preparacao');
+  });
+
+  /** Cinco segundos eram longos o bastante para parecer travamento. */
+  it('nao avanca antes da hora', async () => {
+    await renderIdentified();
+
+    await act(async () => {
+      jest.advanceTimersByTime(2500);
+    });
+
+    expect(mockReplace).not.toHaveBeenCalledWith('/preparacao');
   });
 
   it('não dispara nova análise durante a espera do avanço', async () => {
@@ -485,40 +506,29 @@ describe('identificação facial — avanço automático após sucesso', () => {
     expect(recognizeCallCount).toHaveBeenCalledTimes(1);
 
     await act(async () => {
-      jest.advanceTimersByTime(5000);
+      jest.advanceTimersByTime(3000);
     });
 
     expect(recognizeCallCount).toHaveBeenCalledTimes(1);
   });
 
-  it('cancelar antes do timer impede a navegação automática', async () => {
-    const { getByText, unmount } = await renderIdentified();
+  /**
+   * O caminho de saída passou a ser só o "voltar" do cabeçalho, que chama
+   * o mesmo `goHome`. O teste continua provando o que importava: sair
+   * durante a espera cancela o avanço agendado.
+   */
+  it('sair antes do timer impede a navegação automática', async () => {
+    const { unmount } = await renderIdentified();
 
-    await pressAndSettle(getByText(APP_MESSAGES.face.backHomeButton));
-    // A navegação real desmontaria esta tela; o teste simula isso, já que o
+    // A navegação real desmonta esta tela; o teste simula isso, já que o
     // router mockado não troca de tela sozinho.
     await unmount();
 
     await act(async () => {
-      jest.advanceTimersByTime(5000);
+      jest.advanceTimersByTime(3000);
     });
 
     expect(mockReplace).not.toHaveBeenCalledWith('/preparacao');
-  });
-
-  it('cancelar durante o sucesso também reseta a sessão', async () => {
-    mockScenario.onRecognize = withRecognizeCount(async () => identifiedOutcome({ nome: 'Caio' }));
-    const view = await renderScreen(
-      <>
-        <IdentificationScreen />
-        <PreparationScreen />
-      </>,
-    );
-    await pressAndSettle(view.getByText(APP_MESSAGES.face.startButton));
-
-    await pressAndSettle(view.getByText(APP_MESSAGES.face.backHomeButton));
-
-    expect(view.getByText(APP_MESSAGES.preparation.missingEmployeeTitle)).toBeTruthy();
   });
 
   it('desmontar antes do timer também impede a navegação automática', async () => {
@@ -527,7 +537,7 @@ describe('identificação facial — avanço automático após sucesso', () => {
     await unmount();
 
     await act(async () => {
-      jest.advanceTimersByTime(5000);
+      jest.advanceTimersByTime(3000);
     });
 
     expect(mockReplace).not.toHaveBeenCalledWith('/preparacao');

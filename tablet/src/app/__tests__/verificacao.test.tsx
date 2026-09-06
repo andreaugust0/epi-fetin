@@ -64,11 +64,22 @@ describe('tela de verificação de EPI', () => {
     await waitFor(() => expect(getAllByText(APP_MESSAGES.scan.epiDetecting).length).toBe(1));
   });
 
-  it('lista todos os equipamentos exigidos', async () => {
-    const { queryAllByText } = await renderThroughFlow('conformidade-total');
+  /**
+   * A lista de equipamentos NÃO aparece mais nesta tela, e o teste guarda
+   * isso de propósito.
+   *
+   * Enquanto a Raspberry analisa, o servidor não devolve nada parcial: o
+   * desfecho chega de uma vez, com os sete EPIs juntos. A lista aqui
+   * mostrava sete linhas iguais dizendo "aguardando" — ruído com aparência
+   * de informação. O boneco ocupou o lugar dela, e a lista com nome e
+   * confiança por EPI vive na tela de resultado, onde há resultado.
+   */
+  it('nao lista equipamentos durante a analise', async () => {
+    const { queryAllByText, getAllByText } = await renderThroughFlow('conformidade-total');
 
-    await waitFor(() => expect(queryAllByText('Capacete').length).toBeGreaterThan(0));
-    expect(queryAllByText('Luvas').length).toBeGreaterThan(0);
+    await waitFor(() => expect(getAllByText(APP_MESSAGES.scan.epiDetecting).length).toBe(1));
+    expect(queryAllByText('Capacete')).toHaveLength(0);
+    expect(queryAllByText('Luvas')).toHaveLength(0);
   });
 
   it('reporta progresso até 100%', async () => {

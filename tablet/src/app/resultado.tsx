@@ -7,7 +7,7 @@ import { StateView } from '@/components/feedback';
 import { Screen } from '@/components/layout';
 import { Button, Text } from '@/components/ui';
 import { APP_MESSAGES } from '@/constants/messages';
-import { EpiChecklistItem } from '@/features/epi-detection/components';
+import { EpiChecklistGrid, EpiFigure } from '@/features/epi-detection/components';
 import { useVerificationSession } from '@/features/verification-session/hooks/VerificationSessionContext';
 import { useHaptics } from '@/hooks/useHaptics';
 import { colors, spacing } from '@/theme';
@@ -83,7 +83,7 @@ export default function ResultScreen() {
       >
         <MaterialCommunityIcons
           name={isApproved ? 'check-circle' : 'close-circle'}
-          size={104}
+          size={56}
           color={colors.white}
         />
 
@@ -105,13 +105,14 @@ export default function ResultScreen() {
       </View>
 
       <View style={styles.panel}>
-        <View style={styles.checklist}>
-          {allItems.map((item) => (
-            <View key={item.id} style={styles.checklistCell}>
-              <EpiChecklistItem item={item} />
-            </View>
-          ))}
-        </View>
+        {/*
+          O boneco primeiro, a lista depois. Quem chega na catraca lê a
+          figura de longe e sabe na hora o que faltou; a lista existe para
+          quem se aproxima e quer o nome do equipamento e a confiança.
+        */}
+        <EpiFigure items={allItems} backgroundColor={colors.slate[50]} style={styles.figura} />
+
+        <EpiChecklistGrid items={allItems} style={styles.checklist} />
 
         {isApproved ? (
           <Button
@@ -150,16 +151,20 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-start',
   },
   /**
-   * Metade superior dedicada ao veredito: precisa ser legível a alguns metros,
-   * então ícone e texto vêm grandes e o bloco inteiro é colorido.
+   * Faixa do veredito: legível a alguns metros, então o bloco inteiro é
+   * colorido e o texto vem grande.
+   *
+   * Deixou de ocupar metade da tela (`flex: 1`) quando o boneco entrou. O
+   * espaço tinha que sair de algum lugar, e um ícone gigante de ✓/✗ era o
+   * candidato óbvio: ele repete, em abstrato, o que a faixa colorida e o
+   * título já dizem — enquanto o boneco diz o que nenhum dos dois diz, que
+   * é QUAL equipamento faltou.
    */
   hero: {
-    flex: 1,
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
+    gap: spacing.xs,
     paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.xl,
+    paddingVertical: spacing.lg,
   },
   reason: {
     marginTop: spacing.xs,
@@ -170,16 +175,14 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     padding: spacing.lg,
   },
+  /** O boneco fica com a folga vertical; a lista pede só o que precisa. */
+  figura: {
+    flex: 1,
+    marginBottom: spacing.xs,
+  },
   /** Duas colunas: os sete equipamentos precisam caber sem rolagem. */
   checklist: {
-    flex: 1,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignContent: 'center',
-    gap: spacing.sm,
-  },
-  checklistCell: {
-    width: '48.5%',
+    justifyContent: 'center',
   },
   actions: {
     gap: spacing.sm,
