@@ -237,17 +237,36 @@ async def identificar(
     return ident
 
 
-async def consumir(db: AsyncSession, identificacao_id: uuid.UUID) -> Identificacao:
-    """Valida e queima o token de identificação (uso único)."""
+async def usar(db: AsyncSession, identificacao_id: uuid.UUID) -> Identificacao:
+    """Valida o token de identificação. Vale enquanto não expirar.
+
+    Era uso único, e o uso único quebrava o caso mais comum do sistema.
+
+    Quem reprova por falta de capacete põe o capacete e tenta de novo. A
+    segunda tentativa mandava o mesmo `identificacao_id`, que já estava
+    queimado, e levava 409 — o tablet caía num estado de erro e pedia o
+    rosto de novo, depois de já ter reconhecido a pessoa dez segundos
+    antes. Repetir o reconhecimento facial para repetir a checagem de EPI
+    é cerimônia sem função.
+
+    A proteção continua existindo; o que mudou foi o eixo dela. Antes era
+    a contagem (uma vez só), agora é o relógio: `IDENTIFICACAO_TTL_S`, que
+    são 60 segundos. Um `identificacao_id` vazado continua não servindo
+    para nada um minuto depois, que é a janela em que um vazamento teria
+    valor.
+
+    `consumida_em` continua sendo gravado, mas como registro do PRIMEIRO
+    uso, não como tranca. É o que responde "quando esta identificação
+    começou a valer" numa auditoria.
+    """
     ident = await db.get(Identificacao, identificacao_id)
     if ident is None:
         raise ErroBiometria("identificação não encontrada")
-    if ident.consumida_em is not None:
-        raise ErroBiometria("identificação já utilizada")
     if ident.expira_em < datetime.now(timezone.utc):
         raise ErroBiometria("identificação expirada")
     if ident.resultado is not ResultadoIdentificacao.IDENTIFICADO:
         raise ErroBiometria(f"identificação inválida: {ident.resultado.value}")
-    ident.consumida_em = datetime.now(timezone.utc)
-    await db.flush()
+    if ident.consumida_em is None:
+        ident.consumida_em = datetime.now(timezone.utc)
+        await db.flush()
     return ident

@@ -7,6 +7,7 @@ from app.api.v1 import (
     evidencias,
     identificacao,
     pessoas,
+    politica,
     pontos,
     relatorios,
     verificacoes,
@@ -22,6 +23,7 @@ api_router.include_router(pontos.router)
 api_router.include_router(pessoas.router)
 api_router.include_router(catalogo.router)
 api_router.include_router(relatorios.router)
+api_router.include_router(politica.router)
 
 # WebSocket fora do prefixo /api/v1
 ws_router = ws.router

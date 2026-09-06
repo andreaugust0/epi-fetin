@@ -9,6 +9,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import DB, Tablet, admin_atual, confere_ponto, tablet_atual
+from app.core.config import settings
 from app.db.models import StatusVerificacao, UsuarioAdmin, Verificacao
 from app.schemas.api import (
     DeteccaoOut,
@@ -42,6 +43,13 @@ def _serializar(v: Verificacao) -> VerificacaoOut:
                 presente=d.presente,
                 confianca=float(d.confianca),
                 frames_confirmados=d.frames_confirmados,
+                # Calculado na serialização, não gravado: o limiar é
+                # política corrente do servidor, e uma coluna no banco
+                # congelaria a decisão de ontem num registro que amanhã
+                # seria lido com o limiar de hoje. `confianca` fica no
+                # banco; o veredito se recalcula.
+                aceito=d.presente
+                and float(d.confianca) >= settings.EPI_CONFIANCA_MIN,
             )
             for d in v.deteccoes
         ],
@@ -72,7 +80,7 @@ async def abrir_verificacao(
     ident = None
     if dados.identificacao_id is not None:
         try:
-            ident = await svc_bio.consumir(db, dados.identificacao_id)
+            ident = await svc_bio.usar(db, dados.identificacao_id)
         except svc_bio.ErroBiometria as exc:
             raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from exc
         if ident.ponto_id != dados.ponto_id:

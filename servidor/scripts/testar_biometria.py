@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import asyncio
 import random
+from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import delete, select
 
@@ -168,25 +169,43 @@ async def main() -> None:
             f"(razao={ident3.razao_2o_lugar:.3f} < {settings.FACE_RAZAO_MIN})",
         )
 
-        print("\n7. token de identificação é de uso único")
-        await svc.consumir(db, ident.id)
+        print("\n7. token de identificação vale enquanto não expira")
+        # Deixou de ser uso único de propósito: quem reprova por falta de
+        # capacete põe o capacete e tenta de novo, e a segunda tentativa
+        # manda o mesmo token. Bloquear ali obrigava a refazer o
+        # reconhecimento facial de alguém reconhecido segundos antes.
+        primeiro = await svc.usar(db, ident.id)
         await db.commit()
         try:
-            await svc.consumir(db, ident.id)
-            checar("segundo uso do token é bloqueado", False)
-        except svc.ErroBiometria:
-            checar("segundo uso do token é bloqueado", True)
+            segundo = await svc.usar(db, ident.id)
+            checar("segundo uso dentro da validade é aceito", True)
+            checar(
+                "consumida_em registra o primeiro uso, não o último",
+                segundo.consumida_em == primeiro.consumida_em,
+            )
+        except svc.ErroBiometria as exc:
+            checar("segundo uso dentro da validade é aceito", False, f"({exc})")
         await db.rollback()
 
-        print("\n8. token de identificação sem sucesso não abre verificação")
+        print("\n8. token expirado é recusado")
+        ident.expira_em = datetime.now(timezone.utc) - timedelta(seconds=1)
+        await db.flush()
         try:
-            await svc.consumir(db, ident2.id)
+            await svc.usar(db, ident.id)
+            checar("token vencido é recusado", False)
+        except svc.ErroBiometria:
+            checar("token vencido é recusado", True)
+        await db.rollback()
+
+        print("\n9. token de identificação sem sucesso não abre verificação")
+        try:
+            await svc.usar(db, ident2.id)
             checar("token de não-identificado é recusado", False)
         except svc.ErroBiometria:
             checar("token de não-identificado é recusado", True)
         await db.rollback()
 
-        print("\n9. revogação elimina os vetores (LGPD art. 18)")
+        print("\n10. revogação elimina os vetores (LGPD art. 18)")
         apagados = await svc.revogar_consentimento(db, ana_id)
         await db.commit()
         restantes = (

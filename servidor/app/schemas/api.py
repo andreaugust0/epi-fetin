@@ -86,6 +86,51 @@ class DeteccaoOut(ORMModel):
     presente: bool
     confianca: float
     frames_confirmados: int | None
+    # A descrição vai no Field, não em comentário: ela viaja no OpenAPI, e
+    # é de lá que o painel gera os tipos e o Swagger monta a documentação.
+    # Um comentário `#:` fica bonito no arquivo e não chega em quem consome.
+    aceito: bool = Field(
+        description=(
+            "A borda viu o equipamento E com confiança suficiente "
+            "(`presente` e `confianca >= EPI_CONFIANCA_MIN`). É este campo, "
+            "não `presente`, que corresponde ao que a catraca considerou. "
+            "Os dois ficam separados para distinguir 'não estava usando' de "
+            "'o modelo viu e não teve certeza'."
+        )
+    )
+
+
+class PoliticaOut(BaseModel):
+    """Os limiares que decidem, para quem precisa explicar uma decisão.
+
+    Somente leitura. Estes números mudam no `.env` e reiniciando o
+    serviço — não pela web.
+    """
+
+    epi_confianca_min: float = Field(
+        description=(
+            "Confiança mínima para o servidor ACEITAR um EPI como presente. "
+            "Abaixo disto a catraca não abre e a reprovação é registrada "
+            "como 'não consegui confirmar', não como 'EPI ausente'."
+        )
+    )
+    verificacao_frames: int = Field(
+        description="Quantos frames a borda deve inferir por verificação."
+    )
+    verificacao_timeout_s: int = Field(
+        description="Prazo para a borda responder antes de a verificação expirar."
+    )
+    identificacao_ttl_s: int = Field(
+        description=(
+            "Por quanto tempo uma identificação facial continua valendo — é "
+            "a janela em que dá para repetir a checagem de EPI sem repetir o "
+            "reconhecimento."
+        )
+    )
+    face_distancia_max: float = Field(
+        description="Distância de cosseno máxima para aceitar uma identificação."
+    )
+    catraca_duracao_ms: int = Field(description="Tempo que a catraca fica liberada.")
 
 
 class VerificacaoOut(BaseModel):

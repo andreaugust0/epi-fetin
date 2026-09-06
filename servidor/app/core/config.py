@@ -106,11 +106,40 @@ class Settings(BaseSettings):
     FACE_TOP_K: int = 5
 
     # Janela de validade do token de identificação (segundos).
-    IDENTIFICACAO_TTL_S: int = 60
+    #
+    # Eram 60, e 60 não cobria o próprio fluxo do produto. Some o tempo
+    # real entre reconhecer o rosto e tocar em "Verificar Novamente": três
+    # segundos de cartão de boas-vindas, o tempo de ler a preparação e se
+    # posicionar na marcação do chão, a inferência, ler o resultado,
+    # entender o que faltou e decidir repetir. Um minuto acabava no meio
+    # disso, e o tablet mandava a pessoa refazer o reconhecimento facial
+    # quinze segundos depois de tê-la reconhecido.
+    #
+    # Três minutos cobrem o ciclo inteiro com folga e continuam curtos para
+    # quem quisesse reaproveitar um token vazado.
+    IDENTIFICACAO_TTL_S: int = 180
 
     # ---------------------------------------------------------------- fluxo
     VERIFICACAO_TIMEOUT_S: int = 10
     VERIFICACAO_FRAMES: int = 5
+
+    # Confiança mínima para o servidor ACEITAR um EPI como presente.
+    #
+    # Existe porque a confiança não entrava na decisão em lugar nenhum. A
+    # borda filtra a inferência em 0.30 (`epi_hailo.CONF_THRES`), a votação
+    # decide `presente` contando frames, e o servidor olhava só esse
+    # booleano — então 0.30 era, na prática, o limiar do sistema inteiro, e
+    # ele morava num arquivo de visão computacional da Raspberry. A catraca
+    # abria com 30% de certeza.
+    #
+    # O número mora aqui, e não na borda, pela mesma razão que a lista de
+    # EPIs exigidos mora no banco: é política de segurança, e política é do
+    # servidor. Trocar o modelo da Pi não pode mudar o rigor da catraca.
+    #
+    # 0.60 é ponto de partida, não verdade científica — o mesmo aviso que
+    # vale para FACE_DISTANCIA_MAX. Calibre olhando as confianças reais que
+    # a Raspberry reporta para pessoas comprovadamente em conformidade.
+    EPI_CONFIANCA_MIN: float = 0.60
     CATRACA_DURACAO_MS: int = 5000
     LIBERACAO_TTL_S: int = 10
 

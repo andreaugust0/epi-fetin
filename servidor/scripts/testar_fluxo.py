@@ -278,7 +278,7 @@ async def main() -> None:
             ident.resultado is ResultadoIdentificacao.IDENTIFICADO,
             f"(dist={ident.distancia:.4f})",
         )
-        ident_consumida = await svc_bio.consumir(db, ident.id)
+        ident_consumida = await svc_bio.usar(db, ident.id)
         verif = await svc.abrir(db, ponto_id=ponto_id, identificacao=ident_consumida)
         await db.commit()
         verif_id = verif.id

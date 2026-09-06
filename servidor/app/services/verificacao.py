@@ -139,20 +139,47 @@ async def abrir(
 # ------------------------------------------------------------------ decisão
 def _avaliar(
     exigidos: list[TipoEpi], evt: ResultadoEvt
-) -> tuple[bool, list[str]]:
+) -> tuple[bool, list[str], list[str]]:
     """Confronta o que a borda viu com o que o ponto exige.
 
-    Ausência de informação conta como reprovação: se a Raspberry não relatou
-    nada sobre o capacete e o capacete é exigido, a pessoa não passa. Falhar
-    para o lado seguro é o comportamento correto em segurança do trabalho.
+    Devolve `(aprovado, faltantes, incertos)` — e a separação entre os dois
+    últimos é o ponto deste código.
+
+    **Faltante** é o EPI que a borda não viu. **Incerto** é o que ela viu
+    mas com confiança abaixo de `EPI_CONFIANCA_MIN`. Os dois trancam a
+    catraca; misturá-los é que seria errado. Quem está de capacete e o
+    modelo reconheceu a 40% não está sem capacete — está diante de um
+    modelo que não soube afirmar. Registrar isso como "EPI ausente"
+    acusaria a pessoa de uma infração que ela não cometeu, e ainda
+    contaminaria o histórico: o número que interessa para avaliar o modelo
+    é justamente quantas vezes ele não soube decidir.
+
+    Ausência de informação continua contando como reprovação: se a
+    Raspberry não relatou nada sobre o capacete e o capacete é exigido, a
+    pessoa não passa. Falhar para o lado seguro é o comportamento correto
+    em segurança do trabalho — e é o mesmo motivo pelo qual a confiança
+    baixa também reprova.
     """
     vistos = {d.epi: d for d in evt.deteccoes}
     faltantes: list[str] = []
+    incertos: list[str] = []
     for epi in exigidos:
         item = vistos.get(epi.codigo)
         if item is None or not item.presente:
             faltantes.append(epi.rotulo)
-    return (not faltantes), faltantes
+        elif item.confianca < settings.EPI_CONFIANCA_MIN:
+            incertos.append(epi.rotulo)
+    return (not faltantes and not incertos), faltantes, incertos
+
+
+def _motivo(faltantes: list[str], incertos: list[str]) -> str:
+    """Frase de reprovação que diz qual dos dois problemas aconteceu."""
+    partes = []
+    if faltantes:
+        partes.append("EPI ausente: " + ", ".join(faltantes))
+    if incertos:
+        partes.append("não consegui confirmar: " + ", ".join(incertos))
+    return " · ".join(partes)
 
 
 async def registrar_resultado(db: AsyncSession, evt: ResultadoEvt) -> None:
@@ -191,7 +218,7 @@ async def registrar_resultado(db: AsyncSession, evt: ResultadoEvt) -> None:
             )
         )
 
-    aprovado, faltantes = _avaliar(exigidos, evt)
+    aprovado, faltantes, incertos = _avaliar(exigidos, evt)
     verif.status = (
         StatusVerificacao.APROVADA if aprovado else StatusVerificacao.REPROVADA
     )
@@ -199,7 +226,7 @@ async def registrar_resultado(db: AsyncSession, evt: ResultadoEvt) -> None:
     verif.concluida_em = agora
     verif.latencia_ms = int((agora - verif.iniciada_em).total_seconds() * 1000)
     if not aprovado:
-        verif.motivo_falha = "EPI ausente: " + ", ".join(faltantes)
+        verif.motivo_falha = _motivo(faltantes, incertos)
     await db.flush()
 
     if aprovado:
@@ -213,7 +240,9 @@ async def registrar_resultado(db: AsyncSession, evt: ResultadoEvt) -> None:
             )
         )
 
-    await _notificar(db, verif, faltantes)
+    # O tablet recebe as duas listas: incerto não é ausente, e a tela
+    # precisa poder dizer isso.
+    await _notificar(db, verif, faltantes, incertos)
 
 
 async def _liberar(db: AsyncSession, verif: Verificacao) -> None:
@@ -267,7 +296,10 @@ async def registrar_passagem(db: AsyncSession, evt: PassagemEvt) -> None:
 
 
 async def _notificar(
-    db: AsyncSession, verif: Verificacao, faltantes: list[str]
+    db: AsyncSession,
+    verif: Verificacao,
+    faltantes: list[str],
+    incertos: list[str] | None = None,
 ) -> None:
     """Anuncia o desfecho no canal interno, para chegar ao tablet.
 
@@ -298,6 +330,9 @@ async def _notificar(
             "status": verif.status.value,
             "pessoa": nome,
             "faltantes": faltantes,
+            # Separado dos faltantes de propósito: quem está de capacete e
+            # o modelo reconheceu a 40% não está sem capacete.
+            "incertos": incertos or [],
             "motivo": verif.motivo_falha,
         },
     )
