@@ -1,5 +1,5 @@
 import { Fragment, useCallback, useEffect, useState } from 'react';
-import { api, ErroApi, type Ponto, type Verificacao } from '../api/cliente';
+import { api, ErroApi, type Politica, type Ponto, type Verificacao } from '../api/cliente';
 import {
   Aviso,
   Campo,
@@ -9,6 +9,25 @@ import {
 } from '../componentes/basicos';
 
 const POR_PAGINA = 25;
+
+/**
+ * Como cada detecção aparece na lista de detalhes.
+ *
+ * São três estados, não dois, e essa é a correção que este arquivo
+ * carrega. Antes a pastilha era verde sempre que `presente` fosse
+ * verdadeiro — então um capacete reconhecido a 30% aparecia verde numa
+ * verificação REPROVADA. Quem abria os detalhes lia "capacete OK" e ficava
+ * sem entender por que a catraca não abriu; o painel contradizia a porta.
+ *
+ * `aceito` é o campo que corresponde ao que a catraca considerou. A
+ * diferença entre ele e `presente` é exatamente o terceiro estado: visto,
+ * mas sem certeza suficiente.
+ */
+function estadoDaDeteccao(d: { presente: boolean; aceito: boolean }) {
+  if (d.aceito) return { estado: 'ok' as const, nota: '' };
+  if (d.presente) return { estado: 'aviso' as const, nota: ' · sem certeza' };
+  return { estado: 'alerta' as const, nota: ' · não visto' };
+}
 
 const SITUACOES = [
   ['', 'Todas'],
@@ -29,9 +48,15 @@ export function Verificacoes() {
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(true);
   const [aberta, setAberta] = useState<string | null>(null);
+  const [politica, setPolitica] = useState<Politica | null>(null);
 
   useEffect(() => {
     api.pontos().then(setPontos).catch(() => {});
+    // A régua que decidiu. Sem ela a tela mostra o amarelo e não sabe
+    // dizer a partir de quanto uma confiança passa a valer — e o admin
+    // fica sem o número que ele precisa para julgar se ajusta o limiar ou
+    // se treina o modelo. Falhar aqui não quebra a lista.
+    api.politica().then(setPolitica).catch(() => {});
   }, []);
 
   const carregar = useCallback(async () => {
@@ -167,16 +192,34 @@ export function Verificacoes() {
                                 Nenhuma detecção registrada — a borda não respondeu.
                               </span>
                             ) : (
-                              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                                {v.deteccoes.map((d) => (
-                                  <Pastilha
-                                    key={d.epi}
-                                    estado={d.presente ? 'ok' : 'alerta'}
+                              <>
+                                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                                  {v.deteccoes.map((d) => {
+                                    const { estado, nota } = estadoDaDeteccao(d);
+                                    return (
+                                      <Pastilha key={d.epi} estado={estado}>
+                                        {d.rotulo} · {Math.round(d.confianca * 100)}%
+                                        {nota}
+                                      </Pastilha>
+                                    );
+                                  })}
+                                </div>
+                                {politica && v.deteccoes.some((d) => d.presente && !d.aceito) ? (
+                                  <p
+                                    style={{
+                                      color: 'var(--slate-500)',
+                                      fontSize: 12,
+                                      margin: '10px 0 0',
+                                    }}
                                   >
-                                    {d.rotulo} · {Math.round(d.confianca * 100)}%
-                                  </Pastilha>
-                                ))}
-                              </div>
+                                    Em amarelo, o equipamento foi visto mas abaixo do
+                                    limiar de{' '}
+                                    <b>{Math.round(politica.epi_confianca_min * 100)}%</b>{' '}
+                                    exigido por este servidor — a catraca não abre, e a
+                                    pessoa não está registrada como sem EPI.
+                                  </p>
+                                ) : null}
+                              </>
                             )}
                           </div>
                         </td>

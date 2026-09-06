@@ -34,7 +34,7 @@ máquina, mude `VITE_API_ALVO` no `.env`.
 | `npm run dev` | servidor de desenvolvimento com proxy |
 | `npm run build` | build de produção em `dist/` |
 | `npm run tipos` | **regenera os tipos a partir do OpenAPI do servidor** |
-| `node verificar.mjs` | percorre o painel num navegador real (33 checagens) |
+| `node verificar.mjs` | percorre o painel num navegador real |
 
 ---
 
@@ -67,6 +67,7 @@ quebra é a funcionalidade, não o defeito.
 | **Verificações** | Histórico com filtro por situação e ponto, paginado, com as detecções de cada verificação |
 | **Pessoas** | Cadastro, busca, e o controle de consentimento biométrico |
 | **Pontos de acesso** | Quais EPIs cada ponto exige |
+| **Dispositivos** | O parque de campo e a emissão do token de provisionamento dos tablets |
 
 ### O que o painel deliberadamente NÃO faz
 
@@ -76,9 +77,29 @@ modelo. Esta tela controla quem existe e quem consentiu — e o consentimento
 
 **Decidir aprovação.** Quem decide é o servidor. O painel só mostra.
 
+**Mudar limiar.** `/api/v1/politica` é somente leitura. Os números que
+decidem — confiança mínima de EPI, distância máxima de rosto, prazos —
+mudam no `.env` do servidor e reiniciando o serviço. Um botão web para
+afrouxar o rigor da catraca é o tipo de botão que alguém aperta na véspera
+de uma auditoria; o painel mostra os valores para poder EXPLICAR uma
+decisão, não para alterá-la.
+
 ---
 
 ## Decisões de interface
+
+**Detecção tem três estados, não dois.** Verde é o que a catraca aceitou;
+amarelo é o equipamento que a borda VIU mas com confiança abaixo do limiar;
+vermelho é o que não foi visto. A distinção não é cosmética: pintar de
+verde um capacete reconhecido a 30% fazia o painel dizer "capacete OK"
+diante de uma porta trancada. O campo que corresponde à decisão é `aceito`,
+não `presente`.
+
+**O token do tablet aparece uma vez só.** Ele não fica guardado em lugar
+nenhum consultável — quem fecha a tela antes de colar precisa emitir outro.
+E a URL do servidor é editável de propósito: o painel chuta a partir do
+endereço do navegador e avisa quando o chute sai `localhost`, que no tablet
+significa o próprio tablet.
 
 **Estado codificado em forma, não só em cor.** Cada pastilha tem um ponto
 além da cor e do texto. Quem não distingue as cores continua lendo o estado,
@@ -140,7 +161,7 @@ node verificar.mjs
 ```
 
 Sobe um navegador de verdade, faz login (inclusive testando senha errada),
-percorre as quatro telas, cria uma pessoa, registra consentimento, altera a
+percorre as cinco telas, cria uma pessoa, registra consentimento, altera a
 política de EPIs de um ponto, confere a barra de status e o hero, e verifica
 que o tema único resiste à preferência escura do sistema. Falha se qualquer
 erro de JavaScript ou resposta 5xx aparecer.

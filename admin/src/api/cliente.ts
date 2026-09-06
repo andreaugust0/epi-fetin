@@ -21,6 +21,7 @@ export type Ponto = S['PontoOut'];
 export type TipoEpi = S['TipoEpiOut'];
 export type Dispositivo = S['DispositivoOut'];
 export type Token = S['TokenOut'];
+export type Politica = S['PoliticaOut'];
 
 export interface Conformidade {
   periodo_dias: number;
@@ -174,6 +175,19 @@ export const api = {
     chamar<Ponto>(`/pontos/${pontoId}/epis`, { metodo: 'PUT', corpo: { codigos } }),
 
   dispositivos: () => chamar<Dispositivo[]>('/dispositivos'),
+  /**
+   * Emite o token de provisionamento de um tablet.
+   *
+   * Substitui `docker compose exec api python -m scripts.token_tablet`.
+   * O script continua existindo e continua servindo para quem só tem
+   * terminal — mas quem administra o sistema não deveria precisar de um
+   * shell dentro de um contêiner para pôr um tablet no ar.
+   */
+  emitirTokenTablet: (dispositivoId: number) =>
+    chamar<Token>(`/auth/tablets/${dispositivoId}/token`, { metodo: 'POST' }),
+
+  /** Os limiares em vigor. Somente leitura — mudam no .env do servidor. */
+  politica: () => chamar<Politica>('/politica'),
 
   conformidade: (dias: number) =>
     chamar<Conformidade>('/relatorios/conformidade', { params: { dias } }),

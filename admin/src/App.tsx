@@ -3,6 +3,7 @@ import {
   mdiAccountGroupOutline,
   mdiClipboardTextClockOutline,
   mdiDoorSlidingOpen,
+  mdiTabletDashboard,
   mdiLogoutVariant,
   mdiViewDashboardOutline,
 } from '@mdi/js';
@@ -15,12 +16,14 @@ import { Painel } from './paginas/Painel';
 import { Verificacoes } from './paginas/Verificacoes';
 import { Pessoas } from './paginas/Pessoas';
 import { Pontos } from './paginas/Pontos';
+import { Dispositivos } from './paginas/Dispositivos';
 
 const LINKS = [
   { para: '/', rotulo: 'Painel', icone: mdiViewDashboardOutline, exato: true },
   { para: '/verificacoes', rotulo: 'Verificações', icone: mdiClipboardTextClockOutline },
   { para: '/pessoas', rotulo: 'Pessoas', icone: mdiAccountGroupOutline },
   { para: '/pontos', rotulo: 'Pontos de acesso', icone: mdiDoorSlidingOpen },
+  { para: '/dispositivos', rotulo: 'Dispositivos', icone: mdiTabletDashboard },
 ];
 
 function Moldura() {
@@ -65,6 +68,7 @@ function Moldura() {
             <Route path="/verificacoes" element={<Verificacoes />} />
             <Route path="/pessoas" element={<Pessoas />} />
             <Route path="/pontos" element={<Pontos />} />
+            <Route path="/dispositivos" element={<Dispositivos />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </main>

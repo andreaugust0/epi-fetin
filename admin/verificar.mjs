@@ -206,7 +206,39 @@ try {
   await botaoSalvar.click();
   await pagina.waitForTimeout(1200);
 
-  console.log('\n6. barra de status do sistema');
+  console.log('\n6. dispositivos e provisionamento');
+  await navegar(pagina, 'Dispositivos');
+  checar(
+    'tela de dispositivos carrega',
+    await pagina.getByRole('heading', { name: 'Dispositivos' }).first().isVisible(),
+  );
+
+  const emitir = pagina.getByRole('button', { name: /Emitir token|Emitir outro/ }).first();
+  const temTablet = await emitir.isVisible().catch(() => false);
+  checar('ha ao menos um tablet cadastrado', temTablet);
+
+  if (temTablet) {
+    await emitir.click();
+    await pagina.waitForTimeout(1200);
+    const corpo = await pagina.textContent('body');
+
+    checar('emitir mostra os tres valores do provisionamento', /COLE ESTES TR\u00caS VALORES|Cole estes tr\u00eas valores/i.test(corpo));
+    // Um JWT tem tres partes separadas por ponto. Conferir a FORMA evita o
+    // teste passar com um campo vazio ou com uma mensagem de erro no lugar.
+    const token = await pagina.locator('code.mono').last().textContent();
+    checar(
+      'o token emitido tem forma de JWT',
+      (token ?? '').split('.').length === 3,
+      `(${(token ?? '').length} caracteres)`,
+    );
+    checar(
+      'avisa que o token nao pode ser consultado depois',
+      /uma vez s\u00f3/i.test(corpo),
+    );
+    await pagina.screenshot({ path: `${SAIDA}/5-dispositivos.png`, fullPage: true });
+  }
+
+  console.log('\n7. barra de status do sistema');
   await navegar(pagina, 'Painel');   // o hero só existe no painel
   checar(
     'barra superior mostra o sistema conectado',
@@ -215,7 +247,7 @@ try {
   );
   checar('hero azul do painel renderiza', await pagina.locator('.hero').first().isVisible());
 
-  console.log('\n7. layout preenche a tela');
+  console.log('\n8. layout preenche a tela');
   const larguraConteudo = await pagina.locator('.conteudo').evaluate(
     (el) => el.getBoundingClientRect().width,
   );
@@ -239,7 +271,7 @@ try {
     `(${Math.round(alturaLateral)}px de ${alturaUtil}px)`,
   );
 
-  console.log('\n8. tema');
+  console.log('\n9. tema');
   // O app do totem tem um visual só, claro. O painel segue: preferência de
   // tema escuro no sistema não pode descaracterizá-lo.
   await pagina.emulateMedia({ colorScheme: 'dark' });
@@ -248,7 +280,7 @@ try {
   checar('tema unico se mantem sob preferencia escura', fundo === 'rgb(241, 245, 249)', `(${fundo})`);
   await pagina.emulateMedia({ colorScheme: 'light' });
 
-  console.log('\n9. saúde geral');
+  console.log('\n10. saúde geral');
   checar(
     'nenhum erro no console do navegador',
     errosConsole.length === 0,

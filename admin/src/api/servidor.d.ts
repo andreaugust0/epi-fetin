@@ -420,6 +420,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/politica": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Obter Politica
+         * @description Os parâmetros de decisão em vigor NESTE servidor, agora.
+         */
+        get: operations["obter_politica_api_v1_politica_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health": {
         parameters: {
             query?: never;
@@ -496,6 +516,11 @@ export interface components {
             confianca: number;
             /** Frames Confirmados */
             frames_confirmados: number | null;
+            /**
+             * Aceito
+             * @description A borda viu o equipamento E com confiança suficiente (`presente` e `confianca >= EPI_CONFIANCA_MIN`). É este campo, não `presente`, que corresponde ao que a catraca considerou. Os dois ficam separados para distinguir 'não estava usando' de 'o modelo viu e não teve certeza'.
+             */
+            aceito: boolean;
         };
         /** DispositivoOut */
         DispositivoOut: {
@@ -673,6 +698,45 @@ export interface components {
             matricula?: string | null;
             /** Ativo */
             ativo?: boolean | null;
+        };
+        /**
+         * PoliticaOut
+         * @description Os limiares que decidem, para quem precisa explicar uma decisão.
+         *
+         *     Somente leitura. Estes números mudam no `.env` e reiniciando o
+         *     serviço — não pela web.
+         */
+        PoliticaOut: {
+            /**
+             * Epi Confianca Min
+             * @description Confiança mínima para o servidor ACEITAR um EPI como presente. Abaixo disto a catraca não abre e a reprovação é registrada como 'não consegui confirmar', não como 'EPI ausente'.
+             */
+            epi_confianca_min: number;
+            /**
+             * Verificacao Frames
+             * @description Quantos frames a borda deve inferir por verificação.
+             */
+            verificacao_frames: number;
+            /**
+             * Verificacao Timeout S
+             * @description Prazo para a borda responder antes de a verificação expirar.
+             */
+            verificacao_timeout_s: number;
+            /**
+             * Identificacao Ttl S
+             * @description Por quanto tempo uma identificação facial continua valendo — é a janela em que dá para repetir a checagem de EPI sem repetir o reconhecimento.
+             */
+            identificacao_ttl_s: number;
+            /**
+             * Face Distancia Max
+             * @description Distância de cosseno máxima para aceitar uma identificação.
+             */
+            face_distancia_max: number;
+            /**
+             * Catraca Duracao Ms
+             * @description Tempo que a catraca fica liberada.
+             */
+            catraca_duracao_ms: number;
         };
         /** PontoIn */
         PontoIn: {
@@ -1652,6 +1716,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    obter_politica_api_v1_politica_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PoliticaOut"];
                 };
             };
         };
