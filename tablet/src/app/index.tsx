@@ -64,9 +64,24 @@ export default function HomeScreen() {
             />
           </Pressable>
 
-          <Text variant={metrics.screenTitle} color={colors.slate[900]} align="center">
-            {APP_MESSAGES.home.title}
-          </Text>
+          {/*
+            Toque longo no título abre o provisionamento — URL do servidor,
+            ponto de acesso e token do dispositivo.
+
+            Mesmo padrão do emblema acima, e pelo mesmo motivo: o tablet não
+            tem barra de endereços, e o esquema `epifetin://` digitado no
+            Chrome é tratado como busca, não como link. Sem um gesto aqui,
+            não existe caminho para essa tela no aparelho.
+
+            Três segundos, mais que o do diagnóstico: quem opera o terminal
+            nunca chega aqui por acidente, e a tela continua idêntica para
+            ele.
+          */}
+          <Pressable onLongPress={() => router.push('/provisionamento-tablet')} delayLongPress={3000}>
+            <Text variant={metrics.screenTitle} color={colors.slate[900]} align="center">
+              {APP_MESSAGES.home.title}
+            </Text>
+          </Pressable>
           <Text
             variant={metrics.screenSubtitle}
             color={colors.slate[500]}
