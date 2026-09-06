@@ -181,19 +181,25 @@ def main() -> int:
                     time.sleep(0.2)
                     continue
 
-                deteccoes = detector.detectar(frame)
-
-                # A ÚNICA linha nova em relação ao seu laço original.
-                agente.registrar_frame(deteccoes, frame)
+                # A ÚNICA linha do laço. Guarda o frame cru; NÃO infere.
+                # O modelo roda dentro do agente, quando `cmd/capturar`
+                # chega — e só então.
+                agente.registrar_frame(frame)
 
                 n += 1
-                if n % 30 == 0:
-                    log.info("%.1f fps · %d detecções no último frame",
-                             n / (time.time() - t0), len(deteccoes))
+                if n % 60 == 0:
+                    log.info("%.1f fps · %d frames no anel",
+                             n / (time.time() - t0), len(agente.buffer))
 
                 if args.mostrar:
+                    # A janela é ferramenta de bancada, não parte do
+                    # sistema: aqui — e só aqui — a inferência volta a ser
+                    # contínua, porque não há o que desenhar sem ela.
+                    # Rodando sem `--mostrar`, que é como o serviço sobe, a
+                    # NPU fica parada entre verificações.
                     import cv2
 
+                    deteccoes = detector.detectar(frame)
                     eh.desenhar(frame, [
                         {"caixa": (d.bbox[0], d.bbox[1],
                                    d.bbox[0] + d.bbox[2], d.bbox[1] + d.bbox[3]),
@@ -204,10 +210,10 @@ def main() -> int:
                     if cv2.waitKey(1) & 0xFF == ord("q"):
                         break
 
-                # Teto de fps: o Hailo é rápido, mas a captura, o letterbox
-                # e o decode ainda rodam na CPU da Pi. Sem teto, o laço come
-                # um núcleo inteiro e o throttling térmico derruba
-                # justamente o fps que se queria alto.
+                # Teto de fps: mesmo sem inferir, a captura e a cópia para
+                # o anel rodam na CPU da Pi. Sem teto o laço come um
+                # núcleo inteiro — e agora à toa mesmo, porque os frames
+                # além do espaçamento do buffer são descartados.
                 sobra = intervalo - (time.monotonic() - inicio)
                 if sobra > 0:
                     time.sleep(sobra)

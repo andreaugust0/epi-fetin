@@ -81,7 +81,10 @@ def main() -> int:
         intervalo = 1.0 / args.fps
         while not parar.is_set():
             if not args.mudo:
-                agente.registrar_frame(detector.detectar(None))
+                # Sem câmera de verdade, o "frame" é só um carimbo: o
+                # DetectorFalso ignora o conteúdo. O que importa é o laço
+                # alimentar o anel sem inferir, como o laço real faz.
+                agente.registrar_frame(time.monotonic())
             time.sleep(intervalo)
 
     print("\nencerrado.")

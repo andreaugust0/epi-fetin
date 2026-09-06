@@ -23,20 +23,24 @@ cinco inferências numa CPU ARM, o orçamento evapora. E as cinco fotos
 sairiam do mesmo instante, então "confirmado em 3 de 5 frames" não valeria
 nada.
 
-A ligação certa é um **anel dos últimos frames já inferidos**. O laço
-segue como está e empurra cada resultado para o anel; responder um comando
-vira leitura de memória, com um histórico real de instantes diferentes
-para votar em cima.
+A ligação certa é um **anel dos últimos frames crus**, e a divisão de
+trabalho é o ponto: guardar é contínuo, inferir é sob demanda. O laço só
+lê da câmera e empurra o frame para o anel — barato, e mantém o sensor
+aquecido e exposto. O modelo roda quando `cmd/capturar` chega, sobre os
+últimos N frames guardados, que já são de instantes diferentes.
+
+Assim a NPU passa ociosa o tempo em que não há ninguém na catraca, sem
+perder nem o prazo de 10 s nem a votação por frames.
 
 ```
      seu laço (contínuo)                     servidor (sob demanda)
   ┌────────────────────────┐                ┌──────────────────────┐
-  │ frame → detectar → 📦  │                │  cmd/capturar        │
-  │            ↓            │                └──────────┬───────────┘
-  │      registrar_frame ───┼──→ [anel de 15] ←─────────┘
-  │            ↓            │         │
-  │        desenhar         │         └──→ votar → evt/resultado
-  └────────────────────────┘
+  │ frame ─→ 📦             │                │  cmd/capturar        │
+  │   registrar_frame ──────┼─→ [anel de 15] └──────────┬───────────┘
+  │   (não infere)          │        │                  │
+  └────────────────────────┘        └──→ detectar ×N ←──┘
+                                            ↓
+                                    votar → evt/resultado
 ```
 
 ---
@@ -69,10 +73,13 @@ agente.iniciar()
 
 while True:
     frame = camera.read()
-    deteccoes = detector.detectar(frame)
-    desenhar(frame, deteccoes)          # continua igual
-    agente.registrar_frame(deteccoes)   # a linha nova
+    agente.registrar_frame(frame)   # só guarda; NÃO infira antes
 ```
+
+Repare no que sumiu: o laço não chama mais `detector.detectar`. Ele passa
+a ser leitura de câmera e nada mais. Se você quiser a janela de bancada
+com as caixas desenhadas, chame o detector ali dentro do `if` do preview —
+mas saiba que isso põe a NPU de volta em regime contínuo.
 
 `bbox` é **x, y, largura, altura** em pixels do frame original, canto
 superior esquerdo — não o `cxcywh` normalizado que sai da rede. Pode ser

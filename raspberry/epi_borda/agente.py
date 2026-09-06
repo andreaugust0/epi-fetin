@@ -14,9 +14,12 @@ Uso mínimo, dentro do laço que você já tem:
 
     while True:
         frame = camera.read()
-        deteccoes = meu_detector.detectar(frame)   # o seu código de hoje
-        desenhar(frame, deteccoes)                 # segue igual
-        agente.registrar_frame(deteccoes, frame)   # a única linha nova
+        agente.registrar_frame(frame)   # só guarda; não infere
+
+O laço NÃO chama o detector. Guardar frame é barato; inferir não é, e
+não há o que decidir enquanto ninguém está na catraca. O modelo roda
+dentro de `_responder`, sobre os frames colhidos, quando `cmd/capturar`
+chega — que é o que o servidor pediu e mais nada.
 """
 from __future__ import annotations
 
@@ -46,8 +49,6 @@ class Agente:
         self.detector = detector
         self.buffer = buffer or BufferFrames()
         self._codificar_jpeg = codificar_jpeg
-        self._ultimo_frame: Any = None
-        self._trava_frame = threading.Lock()
         self._parando = threading.Event()
         self._atendidas: set[str] = set()
         self._trava_atendidas = threading.Lock()
@@ -83,17 +84,14 @@ class Agente:
         self.parar()
 
     # --------------------------------------------------- entrada do laço
-    def registrar_frame(self, deteccoes: list[Deteccao], frame: Any = None) -> None:
-        """Chame a cada frame inferido. É o único ponto de contato.
+    def registrar_frame(self, frame: Any) -> None:
+        """Chame a cada frame que o seu laço LER. É o único ponto de contato.
 
-        Guardar o frame é opcional e só serve para a evidência. Guardamos
-        apenas o mais recente, e por referência: copiar cada frame para
-        uma fila seria alocar dezenas de MB/s numa máquina que não tem.
+        Não infira antes de chamar: o modelo roda aqui dentro, e só
+        quando o servidor pede. O seu laço vira leitura de câmera e mais
+        nada, e a NPU passa o tempo ocioso realmente ociosa.
         """
-        self.buffer.registrar(deteccoes)
-        if frame is not None and self.cfg.evidencia_ativa:
-            with self._trava_frame:
-                self._ultimo_frame = frame
+        self.buffer.registrar(frame)
 
     # ------------------------------------------------------- comando
     def _ao_capturar(self, payload: dict, topico: str) -> None:
@@ -137,8 +135,8 @@ class Agente:
         inicio = time.monotonic()
         orcamento = cmd.prazo_s - self.cfg.margem_prazo_s
 
-        amostras = self._colher(cmd.frames, orcamento)
-        if not amostras:
+        frames = self._colher(cmd.frames, orcamento)
+        if not frames:
             # Sem nada no buffer: o laço de visão parou. Melhor não
             # responder do que responder "não vi nada", que o servidor
             # leria como reprovação e negaria a passagem de alguém que
@@ -147,6 +145,11 @@ class Agente:
             # verdade: a câmera não respondeu.
             log.error("buffer vazio: o laço de visão não está alimentando "
                       "registrar_frame(). Não vou responder.")
+            return
+
+        amostras = self._inferir(frames, inicio + orcamento)
+        if not amostras:
+            log.error("nenhum frame inferido dentro do prazo; não vou responder")
             return
 
         votos = votar(
@@ -189,25 +192,54 @@ class Agente:
             log.info("resultado em %dms · todos os %d EPIs presentes",
                      latencia, len(deteccoes))
 
-    def _colher(self, quantos: int, orcamento_s: float) -> list[list[Deteccao]]:
+    def _colher(self, quantos: int, orcamento_s: float) -> list[Any]:
         """Pega N frames do buffer, esperando um pouco se faltarem.
 
-        Numa Raspberry a 6 fps, cinco frames são pouco menos de um
-        segundo. Se o comando chegar logo depois de o laço começar, vale
-        esperar o buffer encher — dentro do orçamento, nunca além dele.
+        Com o espaçamento de 0,2 s do buffer, cinco frames são um
+        segundo de história. Se o comando chegar logo depois de o laço
+        começar, vale esperar o anel encher — dentro do orçamento, nunca
+        além dele.
         """
         limite = time.monotonic() + max(0.0, orcamento_s)
         while True:
-            amostras = self.buffer.recentes(quantos)
-            if len(amostras) >= quantos or time.monotonic() >= limite:
-                return amostras
+            frames = self.buffer.recentes(quantos)
+            if len(frames) >= quantos or time.monotonic() >= limite:
+                return frames
             time.sleep(0.05)
+
+    def _inferir(self, frames: list[Any], prazo: float) -> list[list[Deteccao]]:
+        """Roda o modelo sobre os frames colhidos. É o único lugar que infere.
+
+        Para no meio se o prazo acabar. Votar sobre três frames é pior do
+        que votar sobre cinco, mas é infinitamente melhor do que perder o
+        prazo e deixar a verificação expirar — e o `frames_analisados` que
+        vai no resultado conta quantos realmente entraram, então o
+        servidor registra a diferença em vez de fingir que foram cinco.
+        """
+        if self.detector is None:
+            log.error("agente sem detector: não há como inferir")
+            return []
+
+        amostras: list[list[Deteccao]] = []
+        for i, frame in enumerate(frames):
+            if i and time.monotonic() >= prazo:
+                log.warning("prazo estourou após %d de %d frames",
+                            i, len(frames))
+                break
+            try:
+                amostras.append(self.detector.detectar(frame))
+            except Exception:
+                # Um frame corrompido não pode derrubar a verificação
+                # inteira: os outros quatro ainda decidem.
+                log.exception("falha ao inferir um frame; seguindo com os demais")
+        return amostras
 
     def _talvez_evidencia(self, verificacao_id: str) -> str | None:
         if not self.cfg.evidencia_ativa or self._codificar_jpeg is None:
             return None
-        with self._trava_frame:
-            frame = self._ultimo_frame
+        # O anel já guarda o frame cru; não há mais um "último frame"
+        # separado para manter em sincronia.
+        frame = self.buffer.ultimo()
         if frame is None:
             return None
         try:

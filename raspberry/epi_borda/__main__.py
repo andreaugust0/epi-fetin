@@ -119,14 +119,19 @@ def main() -> int:
                     time.sleep(0.2)
                     continue
 
-                deteccoes = detector.detectar(frame)
-                agente.registrar_frame(deteccoes, frame)
+                # Só guarda. A inferência acontece dentro do agente,
+                # quando `cmd/capturar` chega.
+                agente.registrar_frame(frame)
 
                 if args.mostrar:
-                    _desenhar(frame, deteccoes)
+                    # A janela é bancada: aqui, e só aqui, o modelo volta
+                    # a rodar a cada frame, porque não há o que desenhar
+                    # sem ele.
+                    _desenhar(frame, detector.detectar(frame))
 
-                # Teto de fps: sem isso a inferência come 100% de CPU e a
-                # Pi passa a jogar throttling térmico em cima do laço.
+                # Teto de fps: mesmo sem inferir, a captura e a cópia para
+                # o anel custam CPU, e a Pi joga throttling térmico em
+                # cima do laço se ele girar solto.
                 sobra = intervalo - (time.monotonic() - t0)
                 if sobra > 0:
                     time.sleep(sobra)

@@ -46,45 +46,73 @@ class Detector(Protocol):
 
 # --------------------------------------------------------------- buffer
 class BufferFrames:
-    """Anel dos últimos N frames já inferidos.
+    """Anel dos últimos N frames CRUS da câmera — sem inferência nenhuma.
 
-    É AQUI que o seu laço contínuo e o pedido do servidor se encontram.
+    É AQUI que o laço contínuo da câmera e o pedido do servidor se
+    encontram, e a divisão de trabalho é deliberada: **guardar é
+    contínuo, inferir é sob demanda.**
 
-    A alternativa óbvia — ao receber `cmd/capturar`, ligar a câmera e
-    tirar cinco fotos — não fecha a conta. O servidor expira em 10 s, e
-    entre acordar o sensor, esperar o auto-exposure estabilizar e rodar
-    cinco inferências numa CPU ARM, o orçamento evapora. Pior: as fotos
-    seriam todas do mesmo instante, então "confirmado em 3 de 5 frames"
-    não valeria nada.
+    A alternativa que parece mais simples — ao receber `cmd/capturar`,
+    ligar a câmera e tirar cinco fotos — não fecha a conta. O servidor
+    expira em 10 s, e entre acordar o sensor e esperar o auto-exposure
+    estabilizar o orçamento evapora. Pior: as cinco fotos sairiam todas
+    do mesmo instante, e "confirmado em 3 de 5 frames" não valeria nada.
 
-    Mantendo o laço rodando e gravando cada resultado aqui, responder um
-    comando vira leitura de memória: microssegundos, e com um histórico
-    real de instantes diferentes para votar em cima.
+    A outra alternativa — inferir a cada frame e guardar as detecções —
+    resolve o prazo, mas põe a NPU trabalhando o dia inteiro para
+    ninguém: entre uma pessoa e outra na catraca não há nada a decidir.
 
-    O custo é que a resposta olha para o passado recente, não para o
-    agora. Com `janela_s` em 3 segundos e a pessoa parada na frente da
-    catraca, é a mesma coisa — e é por isso que existe o descarte por
-    idade: um frame de 30 s atrás pode ser de outra pessoa.
+    Guardando o frame cru, ficam as duas coisas. Ler um frame e copiá-lo
+    para o anel é barato e mantém o sensor aquecido e exposto; a
+    inferência só acontece quando alguém pergunta, sobre um histórico que
+    já tem instantes diferentes para votar.
+
+    `intervalo_min_s` é o detalhe que faz a votação continuar valendo.
+    Sem ele, um laço a 30 fps encheria o anel com 15 frames de meio
+    segundo — quinze retratos do mesmo instante. Espaçando as amostras,
+    os mesmos 15 frames cobrem os 3 s da janela.
+
+    O custo é memória: 15 frames de 640×480 são ~13 MB parados. Numa Pi 5
+    isso não é problema; numa placa apertada, baixe `capacidade`.
     """
 
-    def __init__(self, capacidade: int = 15, janela_s: float = 3.0) -> None:
+    def __init__(
+        self,
+        capacidade: int = 15,
+        janela_s: float = 3.0,
+        intervalo_min_s: float = 0.2,
+    ) -> None:
         self.janela_s = janela_s
-        self._itens: deque[tuple[float, list[Deteccao]]] = deque(maxlen=capacidade)
+        self.intervalo_min_s = intervalo_min_s
+        self._itens: deque[tuple[float, Any]] = deque(maxlen=capacidade)
         self._trava = threading.Lock()
         self._frames_vistos = 0
+        self._ultimo_guardado = 0.0
 
-    def registrar(self, deteccoes: list[Deteccao]) -> None:
-        """Chame a cada frame que o seu laço inferir."""
+    def registrar(self, frame: Any) -> None:
+        """Chame a cada frame que o seu laço LER. Não infira antes."""
+        agora = time.monotonic()
         with self._trava:
-            self._itens.append((time.monotonic(), deteccoes))
+            # Conta todo frame oferecido, guardado ou não: é isto que a
+            # telemetria reporta como fps do laço. Contar só os guardados
+            # faria a Pi parecer travada a 5 fps com a câmera perfeita.
             self._frames_vistos += 1
+            if agora - self._ultimo_guardado < self.intervalo_min_s:
+                return
+            self._ultimo_guardado = agora
+            self._itens.append((agora, frame))
 
-    def recentes(self, quantos: int) -> list[list[Deteccao]]:
+    def recentes(self, quantos: int) -> list[Any]:
         """Os últimos `quantos` frames dentro da janela de tempo."""
         limite = time.monotonic() - self.janela_s
         with self._trava:
-            frescos = [d for t, d in self._itens if t >= limite]
+            frescos = [f for t, f in self._itens if t >= limite]
         return frescos[-quantos:]
+
+    def ultimo(self) -> Any | None:
+        """O frame mais recente, para a evidência."""
+        with self._trava:
+            return self._itens[-1][1] if self._itens else None
 
     @property
     def frames_vistos(self) -> int:

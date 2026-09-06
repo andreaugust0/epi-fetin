@@ -5,7 +5,7 @@
     agente = Agente(carregar(), detector=meu_detector)
     agente.iniciar()
     ...
-        agente.registrar_frame(deteccoes, frame)
+        agente.registrar_frame(frame)   # só guarda; não infere
 
 Os símbolos são resolvidos sob demanda (PEP 562). Importar tudo aqui em
 cima custaria o `paho` inteiro para quem só quer rodar
