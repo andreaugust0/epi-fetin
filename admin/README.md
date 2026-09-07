@@ -71,9 +71,19 @@ quebra é a funcionalidade, não o defeito.
 
 ### O que o painel deliberadamente NÃO faz
 
-**Cadastrar rosto.** O embedding é calculado no tablet, que tem a câmera e o
-modelo. Esta tela controla quem existe e quem consentiu — e o consentimento
-é pré-requisito: o servidor recusa cadastrar biometria sem ele.
+**Guardar fotos.** O cadastro facial acontece aqui — você envia as fotos e
+o servidor gera os vetores — mas a imagem é descartada assim que o vetor
+sai. Não vai para disco, banco nem bucket. O consentimento continua sendo
+pré-requisito: o servidor recusa gravar biometria sem ele.
+
+Vale saber o risco que isso carrega. O tablet detecta o rosto com ML Kit;
+o servidor usa YuNet, porque ML Kit não roda fora do Android. Detectores
+diferentes recortam o rosto de formas ligeiramente diferentes, e como o
+recorte é feito sem margem, um recorte diferente produz um vetor de outro
+espaço — uma pessoa cadastrada com sucesso que a catraca nunca reconhece.
+Por isso o cadastro por foto devolve a distância entre o vetor novo e os
+que a pessoa já tinha, e a tela mostra o recorte que virou vetor. É a
+diferença entre saber e torcer.
 
 **Decidir aprovação.** Quem decide é o servidor. O painel só mostra.
 

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { CadastroRosto } from '../componentes/CadastroRosto';
 import { api, ErroApi, type Pessoa } from '../api/cliente';
-import { mdiAccountPlusOutline, mdiClose } from '@mdi/js';
+import { mdiAccountPlusOutline, mdiCameraPlusOutline, mdiClose } from '@mdi/js';
 import { Aviso, Campo, Icone, Pastilha } from '../componentes/basicos';
 
 const POR_PAGINA = 25;
@@ -15,6 +16,7 @@ export function Pessoas() {
   const [ok, setOk] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(true);
   const [novaAberta, setNovaAberta] = useState(false);
+  const [rostoAberto, setRostoAberto] = useState<number | null>(null);
   const [nova, setNova] = useState({ nome: '', funcao: '' });
 
   const carregar = useCallback(async () => {
@@ -86,6 +88,9 @@ export function Pessoas() {
 
   const ultimaPagina = Math.max(0, Math.ceil(total / POR_PAGINA) - 1);
 
+  /** Pessoa com o painel de cadastro facial aberto, se houver. */
+  const emCadastro = itens.find((p) => p.id === rostoAberto) ?? null;
+
   return (
     <>
       <div className="cabecalho">
@@ -129,6 +134,14 @@ export function Pessoas() {
             </button>
           </div>
         </form>
+      ) : null}
+
+      {emCadastro ? (
+        <CadastroRosto
+          pessoa={emCadastro}
+          aoFechar={() => setRostoAberto(null)}
+          aoCadastrar={() => void carregar()}
+        />
       ) : null}
 
       <div className="filtros">
@@ -193,6 +206,20 @@ export function Pessoas() {
                     )}
                   </td>
                   <td style={{ whiteSpace: 'nowrap' }}>
+                    <button
+                      className="pequeno"
+                      onClick={() => setRostoAberto(rostoAberto === p.id ? null : p.id)}
+                      disabled={!p.consentimento_vigente}
+                      title={
+                        p.consentimento_vigente
+                          ? undefined
+                          : 'Registre o consentimento antes de cadastrar o rosto.'
+                      }
+                      style={{ marginRight: 8 }}
+                    >
+                      <Icone caminho={mdiCameraPlusOutline} />
+                      Rosto
+                    </button>
                     {p.consentimento_vigente ? (
                       <button className="pequeno perigo" onClick={() => revogar(p)}>
                         Revogar
@@ -219,10 +246,11 @@ export function Pessoas() {
       </div>
 
       <Aviso>
-        O <b>cadastro do rosto</b> não acontece aqui: o embedding é calculado no
-        tablet, que tem a câmera e o modelo. Esta tela controla quem existe e
-        quem consentiu — e o consentimento é pré-requisito, o servidor recusa
-        cadastrar biometria sem ele.
+        O <b>cadastro do rosto</b> acontece aqui e também pelo tablet — os dois
+        rodam o mesmo FaceNet, sobre o mesmo arquivo de modelo. A foto enviada
+        por esta tela vira vetor no servidor e é descartada na hora: nada de
+        imagem fica guardado. O consentimento é pré-requisito, e o servidor
+        recusa gravar biometria sem ele.
       </Aviso>
 
       <div className="filtros">

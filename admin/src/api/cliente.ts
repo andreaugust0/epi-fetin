@@ -22,6 +22,7 @@ export type TipoEpi = S['TipoEpiOut'];
 export type Dispositivo = S['DispositivoOut'];
 export type Token = S['TokenOut'];
 export type Politica = S['PoliticaOut'];
+export type RostoCadastrado = S['RostoCadastradoOut'];
 
 export interface Conformidade {
   periodo_dias: number;
@@ -31,6 +32,67 @@ export interface Conformidade {
     total: number;
     aprovadas: number;
     taxa_conformidade: number | null;
+  }[];
+}
+
+export interface Panorama {
+  periodo_dias: number;
+  atual: MetricasPeriodo;
+  anterior: MetricasPeriodo;
+}
+
+export interface MetricasPeriodo {
+  verificacoes: number;
+  aprovadas: number;
+  bloqueios: number;
+  pessoas_barradas: number;
+  liberacoes_manuais: number;
+  taxa_conformidade: number | null;
+}
+
+export interface Tendencia {
+  periodo_dias: number;
+  dias: {
+    dia: string;
+    aprovadas: number;
+    bloqueios: number;
+    total: number;
+    taxa_conformidade: number | null;
+  }[];
+}
+
+export interface Horarios {
+  periodo_dias: number;
+  fuso: string;
+  celulas: {
+    dia_semana: number;
+    hora: number;
+    total: number;
+    bloqueios: number;
+    taxa_bloqueio: number | null;
+  }[];
+}
+
+export interface Reincidencia {
+  periodo_dias: number;
+  pessoas: {
+    pessoa_id: number;
+    nome: string;
+    bloqueios: number;
+    verificacoes: number;
+    taxa_bloqueio: number | null;
+    epi_mais_ausente: string | null;
+    ultimo_em: string;
+  }[];
+}
+
+export interface LiberacoesManuais {
+  periodo_dias: number;
+  itens: {
+    ocorrido_em: string;
+    justificativa: string | null;
+    ponto: string;
+    pessoa: string | null;
   }[];
 }
 
@@ -136,6 +198,40 @@ export async function chamar<T>(rota: string, opcoes: Opcoes = {}): Promise<T> {
   return dados as T;
 }
 
+/**
+ * Envio de arquivo. Existe separado de `chamar` porque multipart e JSON não
+ * combinam: com `FormData`, o `Content-Type` precisa ser definido pelo
+ * navegador (ele acrescenta o `boundary`). Defini-lo à mão é o erro clássico
+ * — o servidor recebe um corpo que não consegue separar em partes.
+ */
+async function enviarArquivo<T>(caminho: string, campo: string, arquivo: File): Promise<T> {
+  const corpo = new FormData();
+  corpo.append(campo, arquivo);
+
+  const headers: Record<string, string> = { Accept: 'application/json' };
+  const token = lerToken();
+  if (token) headers.Authorization = `Bearer ${token}`;
+
+  let resposta: Response;
+  try {
+    resposta = await fetch(`/api/v1${caminho}`, { method: 'POST', headers, body: corpo });
+  } catch {
+    throw new ErroApi(0, 'Não foi possível falar com o servidor. Ele está no ar?');
+  }
+
+  const texto = await resposta.text();
+  const dados = texto ? JSON.parse(texto) : null;
+
+  if (!resposta.ok) {
+    if (resposta.status === 401) {
+      limparToken();
+      window.dispatchEvent(new Event(SESSAO_EXPIRADA));
+    }
+    throw new ErroApi(resposta.status, mensagemDeErro(resposta.status, dados), dados);
+  }
+  return dados as T;
+}
+
 // ------------------------------------------------------------------ rotas
 export const api = {
   login: (email: string, senha: string) =>
@@ -166,6 +262,16 @@ export const api = {
       { metodo: 'DELETE' },
     ),
 
+  /**
+   * Cadastra uma biometria a partir de uma FOTO.
+   *
+   * A imagem sobe, vira vetor no servidor e é descartada — não é gravada
+   * em disco, banco nem bucket. A resposta traz o recorte que o modelo
+   * realmente viu e a distância para os vetores que a pessoa já tinha.
+   */
+  cadastrarRosto: (pessoaId: number, foto: File) =>
+    enviarArquivo<RostoCadastrado>(`/pessoas/${pessoaId}/biometrias/foto`, 'foto', foto),
+
   verificacoes: (params: Record<string, string | number | undefined>) =>
     chamar<PaginaVerificacoes>('/verificacoes', { params }),
 
@@ -193,4 +299,16 @@ export const api = {
     chamar<Conformidade>('/relatorios/conformidade', { params: { dias } }),
   episFaltantes: (dias: number) =>
     chamar<EpisFaltantes>('/relatorios/epis-faltantes', { params: { dias } }),
+
+  // ------------------------------------------------ painel executivo
+  panorama: (dias: number) =>
+    chamar<Panorama>('/relatorios/panorama', { params: { dias } }),
+  tendencia: (dias: number) =>
+    chamar<Tendencia>('/relatorios/tendencia', { params: { dias } }),
+  horarios: (dias: number) =>
+    chamar<Horarios>('/relatorios/horarios', { params: { dias } }),
+  reincidencia: (dias: number) =>
+    chamar<Reincidencia>('/relatorios/reincidencia', { params: { dias } }),
+  liberacoesManuais: (dias: number) =>
+    chamar<LiberacoesManuais>('/relatorios/liberacoes-manuais', { params: { dias } }),
 };

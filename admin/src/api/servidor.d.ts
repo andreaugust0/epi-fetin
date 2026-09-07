@@ -113,6 +113,37 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/pessoas/{pessoa_id}/biometrias/foto": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cadastrar Biometria Por Foto
+         * @description Foto → embedding → cadastro, sem passar por tablet nenhum.
+         *
+         *     A foto vive só em memória e é descartada assim que o vetor sai. Não há
+         *     caminho neste endpoint que a escreva em disco.
+         *
+         *     O retorno traz a distância entre o vetor novo e os que a pessoa já
+         *     tinha, e isso não é enfeite: o tablet detecta rosto com ML Kit e aqui
+         *     usamos YuNet, e dois detectores podem recortar o rosto de formas
+         *     ligeiramente diferentes. Quando isso acontece, os vetores deixam de ser
+         *     comparáveis — e o sintoma seria uma pessoa cadastrada com sucesso que a
+         *     catraca nunca reconhece. A distância transforma esse risco silencioso
+         *     num número na tela.
+         */
+        post: operations["cadastrar_biometria_por_foto_api_v1_pessoas__pessoa_id__biometrias_foto_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/verificacoes": {
         parameters: {
             query?: never;
@@ -476,6 +507,15 @@ export interface components {
             /** Qualidade */
             qualidade?: number | null;
         };
+        /** Body_cadastrar_biometria_por_foto_api_v1_pessoas__pessoa_id__biometrias_foto_post */
+        Body_cadastrar_biometria_por_foto_api_v1_pessoas__pessoa_id__biometrias_foto_post: {
+            /**
+             * Foto
+             * Format: binary
+             * @description JPEG ou PNG com UM rosto de frente.
+             */
+            foto: string;
+        };
         /** Body_enviar_api_v1_evidencias_post */
         Body_enviar_api_v1_evidencias_post: {
             /**
@@ -781,6 +821,66 @@ export interface components {
             ativo?: boolean | null;
         };
         /**
+         * RostoCadastradoOut
+         * @description Resultado de um cadastro biométrico feito a partir de uma foto.
+         *
+         *     Devolve bem mais que "ok": devolve o que foi MEDIDO. Quem cadastra
+         *     precisa poder ver o recorte que virou o vetor e a distância para os
+         *     vetores que já existiam — sem isso, um cadastro errado só apareceria
+         *     semanas depois, como uma pessoa que a catraca nunca reconhece.
+         */
+        RostoCadastradoOut: {
+            /** Biometria Id */
+            biometria_id: number;
+            /** Modelo */
+            modelo: string;
+            /**
+             * Qualidade
+             * @description Confiança do detector de rosto, 0 a 1.
+             */
+            qualidade: number;
+            /**
+             * Caixa Rosto
+             * @description Onde o rosto foi encontrado na foto original, em pixels.
+             */
+            caixa_rosto: {
+                [key: string]: number;
+            };
+            /**
+             * Caixa Recorte
+             * @description O quadrado efetivamente recortado e redimensionado para 160x160.
+             */
+            caixa_recorte: {
+                [key: string]: number;
+            };
+            /**
+             * Recorte Base64
+             * @description PNG 160x160 do recorte, em base64. É o que o modelo realmente viu — a única forma de alguém perceber que o detector pegou a pessoa errada ou um pedaço do fundo.
+             */
+            recorte_base64: string;
+            /**
+             * Distancia Menor
+             * @description Menor distância de cosseno entre este vetor e os que a pessoa já tinha. Serve de medida de compatibilidade entre o cadastro pelo painel e o que o tablet gerou: perto de zero é o mesmo rosto no mesmo espaço; alto demais indica que os dois caminhos não estão produzindo vetores comparáveis.
+             */
+            distancia_menor?: number | null;
+            /**
+             * Compativel
+             * @description Falso quando `distancia_menor` passou de FACE_DISTANCIA_ALERTA. Nulo quando esta é a primeira biometria da pessoa e não há com o que comparar.
+             */
+            compativel?: boolean | null;
+            /**
+             * Quase Identica
+             * @description A foto é praticamente igual a uma já cadastrada. Não é erro — foi gravada — mas não acrescenta variação, e é variação que melhora o reconhecimento.
+             * @default false
+             */
+            quase_identica: boolean;
+            /**
+             * Total Biometrias
+             * @description Quantos embeddings a pessoa tem depois deste cadastro.
+             */
+            total_biometrias: number;
+        };
+        /**
          * StatusVerificacao
          * @enum {string}
          */
@@ -1082,6 +1182,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": Record<string, never>;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cadastrar_biometria_por_foto_api_v1_pessoas__pessoa_id__biometrias_foto_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pessoa_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_cadastrar_biometria_por_foto_api_v1_pessoas__pessoa_id__biometrias_foto_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RostoCadastradoOut"];
                 };
             };
             /** @description Validation Error */
