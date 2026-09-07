@@ -77,7 +77,7 @@ def main() -> None:
 
         r = c.post("/api/v1/pessoas", headers=h, json={
             "matricula": "ADM-001", "nome": "Outra"})
-        checar("matrícula duplicada é recusada", r.status_code == 409,
+        checar("registro duplicado é recusado", r.status_code == 409,
                f"({r.status_code})")
 
         r = c.get("/api/v1/pessoas", headers=h, params={"busca": "Joana"})

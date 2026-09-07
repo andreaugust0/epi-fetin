@@ -277,7 +277,8 @@ class PessoaIn(BaseModel):
     funcao: str | None = None
     setor: str | None = None
     admitido_em: date | None = None
-    #: Opcional — nem toda operação usa matrícula.
+    #: Número de registro do empregado ("Registro", no painel).
+    #: Opcional — nem toda operação usa.
     matricula: str | None = Field(default=None, max_length=40)
     ativo: bool = True
 

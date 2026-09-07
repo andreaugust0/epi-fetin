@@ -250,7 +250,7 @@ export function FichaPessoa({
           </b>
           {criada ? (
             <p style={{ color: 'var(--slate-500)', fontSize: 13, margin: '4px 0 0' }}>
-              {criada.matricula ? `matrícula ${criada.matricula} · ` : ''}
+              {criada.matricula ? `registro ${criada.matricula} · ` : ''}
               <span className="mono">#{criada.id}</span>
             </p>
           ) : null}
@@ -310,7 +310,7 @@ export function FichaPessoa({
               marginBottom: 16,
             }}
           >
-            <Campo rotulo="Matrícula">
+            <Campo rotulo="Registro">
               <input
                 value={dados.matricula}
                 onChange={(e) => campo('matricula', e.target.value)}

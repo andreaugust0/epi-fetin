@@ -132,9 +132,13 @@ class Pessoa(Base):
     __tablename__ = "pessoas"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    # Opcional: nem toda operação tem matrícula. Continua UNIQUE — no
-    # Postgres, UNIQUE permite vários NULL, então a restrição só vale para
-    # quem de fato tem uma.
+    # O número de registro do empregado (o painel o chama de "Registro";
+    # a coluna manteve o nome antigo para não custar mais um RENAME num
+    # banco que já tem dados).
+    #
+    # Opcional: nem toda operação usa. Continua UNIQUE — no Postgres,
+    # UNIQUE permite vários NULL, então a restrição só vale para quem de
+    # fato tem um.
     matricula: Mapped[str | None] = mapped_column(
         String(40), unique=True, nullable=True
     )

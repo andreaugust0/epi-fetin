@@ -49,7 +49,9 @@ async def _resumo_biometria(db: AsyncSession, pessoa_id: int) -> tuple[int, bool
 
 @router.get("/pessoas", response_model=PaginaPessoas)
 async def listar(
-    busca: str | None = Query(None, description="filtra por nome ou matrícula"),
+    busca: str | None = Query(
+        None, description="filtra por nome, registro ou setor"
+    ),
     ativo: bool | None = None,
     com_biometria: bool | None = Query(
         None, description="true = só quem já tem rosto cadastrado"
@@ -63,7 +65,7 @@ async def listar(
     if busca:
         alvo = f"%{busca.strip()}%"
         # ilike em coluna NULL devolve NULL, que o WHERE trata como falso —
-        # então quem não tem matrícula continua achável pelo nome.
+        # então quem não tem registro continua achável pelo nome.
         filtros.append(
             Pessoa.nome.ilike(alvo)
             | Pessoa.matricula.ilike(alvo)
@@ -104,8 +106,8 @@ async def criar(
     usuario: UsuarioAdmin = Depends(admin_atual),
     db: AsyncSession = DB,
 ) -> PessoaOut:
-    # A matrícula é opcional; só checamos duplicata quando ela foi informada.
-    # No Postgres, UNIQUE aceita vários NULL, então quem não tem matrícula
+    # O registro é opcional; só checamos duplicata quando ele foi informado.
+    # No Postgres, UNIQUE aceita vários NULL, então quem não tem registro
     # não colide com ninguém.
     if dados.matricula:
         ja_existe = (
@@ -116,7 +118,7 @@ async def criar(
         if ja_existe:
             raise HTTPException(
                 status.HTTP_409_CONFLICT,
-                f"já existe alguém com a matrícula {dados.matricula}",
+                f"já existe alguém com o registro {dados.matricula}",
             )
 
     p = Pessoa(**dados.model_dump())

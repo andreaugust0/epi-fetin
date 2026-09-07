@@ -154,7 +154,7 @@ export function Pessoas() {
               setBusca(e.target.value);
               setPagina(0);
             }}
-            placeholder="nome, matrícula ou setor"
+            placeholder="nome, registro ou setor"
             style={{ minWidth: 240 }}
           />
         </Campo>
@@ -202,9 +202,9 @@ export function Pessoas() {
                     <td>
                       <div>{p.nome}</div>
                       <span className="mono" style={{ color: 'var(--slate-400)', fontSize: 12 }}>
-                        {/* A matrícula é o identificador do RH; o id interno
-                            é por onde a pessoa aparece no log do servidor, e
-                            é o que o suporte pede. */}
+                        {/* O registro é o identificador do RH; o id
+                            interno é por onde a pessoa aparece no log do
+                            servidor, e é o que o suporte pede. */}
                         {p.matricula ? `${p.matricula} · ` : ''}#{p.id}
                       </span>
                     </td>
