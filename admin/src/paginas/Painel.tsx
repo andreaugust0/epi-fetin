@@ -164,7 +164,7 @@ export function Painel() {
 
   const barras: ItemBarra[] =
     faltantes?.itens
-      .filter((i) => i.faltas > 0)
+      ?.filter((i) => i.faltas > 0)
       .map((i) => ({
         rotulo: i.epi,
         valor: i.faltas,
@@ -315,7 +315,7 @@ export function Painel() {
       >
         {carregando ? (
           <div className="vazio">Carregando…</div>
-        ) : (reincidencia?.pessoas.length ?? 0) === 0 ? (
+        ) : (reincidencia?.pessoas?.length ?? 0) === 0 ? (
           <div className="vazio">Ninguém foi bloqueado no período.</div>
         ) : (
           <div className="rolagem">
@@ -331,7 +331,7 @@ export function Painel() {
                 </tr>
               </thead>
               <tbody>
-                {reincidencia!.pessoas.map((p) => (
+                {(reincidencia?.pessoas ?? []).map((p) => (
                   <tr key={p.pessoa_id}>
                     <td>{p.nome}</td>
                     <td className="num">{p.bloqueios}</td>
@@ -364,7 +364,7 @@ export function Painel() {
         )}
       </Secao>
 
-      {(manuais?.itens.length ?? 0) > 0 ? (
+      {(manuais?.itens?.length ?? 0) > 0 ? (
         <Secao
           titulo="Liberações manuais"
           descricao="Vezes em que a catraca foi aberta por fora da verificação. Toda barreira precisa de uma válvula de escape — sem ela, alguém escora a catraca com um extintor e não sobra registro de nada. O que importa é a frequência: uma por mês é operação normal; trinta por semana significam que o sistema está atrapalhando o trabalho e vai ser contornado de qualquer jeito."
@@ -380,7 +380,7 @@ export function Painel() {
                 </tr>
               </thead>
               <tbody>
-                {manuais!.itens.map((i) => (
+                {(manuais?.itens ?? []).map((i) => (
                   <tr key={`${i.ocorrido_em}-${i.ponto}`}>
                     <td>{formatarData(i.ocorrido_em)}</td>
                     <td>{i.ponto}</td>
@@ -406,14 +406,14 @@ export function Painel() {
             </tr>
           </thead>
           <tbody>
-            {(conf?.pontos.length ?? 0) === 0 ? (
+            {(conf?.pontos?.length ?? 0) === 0 ? (
               <tr>
                 <td colSpan={4} className="vazio">
                   Nenhuma verificação no período.
                 </td>
               </tr>
             ) : (
-              conf!.pontos.map((p) => (
+              (conf?.pontos ?? []).map((p) => (
                 <tr key={p.ponto_id}>
                   <td>{p.nome}</td>
                   <td className="num">{p.total}</td>
