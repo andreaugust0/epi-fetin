@@ -20,8 +20,25 @@ interface Props {
 const ALTURA_LINHA = 34;
 const ESPACO = 2; // gap de superfície entre barras adjacentes
 const RAIO = 6; // arredondamento só na ponta de dados (radii.sm do app)
-const LARGURA_ROTULO = 132;
 const MARGEM_DIREITA = 96;
+
+/**
+ * Largura da faixa de rótulos, calculada a partir do rótulo mais longo.
+ *
+ * Era fixa em 132, e "Protetor auricular" — o EPI que mais falta na
+ * operação, ou seja, justamente a primeira linha do gráfico — saía do
+ * quadro pela esquerda e aparecia como "rotetor auricular". O SVG não
+ * avisa: texto que passa do viewBox some sem erro nenhum.
+ *
+ * 7,6 px por caractere é a média LARGA da fonte da interface em 13px semi-
+ * bold — a estimativa erra para mais de propósito, porque errar para menos
+ * corta a primeira letra e ninguém percebe. O teto de 300 evita que um
+ * rótulo absurdo engula a área das barras.
+ */
+const larguraRotulo = (rotulos: string[]): number => {
+  const maior = Math.max(...rotulos.map((r) => r.length));
+  return Math.min(300, Math.max(132, Math.ceil(maior * 7.6) + 16));
+};
 
 /**
  * Ranking horizontal de uma única medida.
@@ -52,7 +69,8 @@ export function BarrasRanking({ itens, titulo, unidade = '', maximo = 8 }: Props
   }
 
   const maiorValor = Math.max(...visiveis.map((i) => i.valor), 1);
-  const largura = 640;
+  const LARGURA_ROTULO = larguraRotulo(visiveis.map((i) => i.rotulo));
+  const largura = 640 + Math.max(0, LARGURA_ROTULO - 132);
   const areaBarras = largura - LARGURA_ROTULO - MARGEM_DIREITA;
   const altura = visiveis.length * (ALTURA_LINHA + ESPACO);
 
