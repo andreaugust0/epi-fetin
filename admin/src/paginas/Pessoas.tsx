@@ -1,23 +1,81 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react';
-import { CadastroRosto } from '../componentes/CadastroRosto';
+import { useCallback, useEffect, useState } from 'react';
+import { mdiAccountPlusOutline, mdiPencilOutline } from '@mdi/js';
 import { api, ErroApi, type Pessoa } from '../api/cliente';
-import { mdiAccountPlusOutline, mdiCameraPlusOutline, mdiClose } from '@mdi/js';
-import { Aviso, Campo, Icone, Pastilha } from '../componentes/basicos';
+import { FichaPessoa } from '../componentes/FichaPessoa';
+import { Aviso, Campo, Icone, Pastilha, type Estado } from '../componentes/basicos';
 
 const POR_PAGINA = 25;
-const VERSAO_TERMO = '1.0';
+
+type Filtro = 'ativos' | 'inativos' | 'todos';
+
+const FILTROS: { chave: Filtro; rotulo: string }[] = [
+  { chave: 'ativos', rotulo: 'Ativos' },
+  { chave: 'inativos', rotulo: 'Inativos' },
+  { chave: 'todos', rotulo: 'Todos' },
+];
+
+/**
+ * O que a coluna "Cadastro facial" mostra.
+ *
+ * O consentimento vive AQUI, e não numa coluna própria de "situação".
+ *
+ * Ele não é um atributo da pessoa — é a autorização para guardar a biometria
+ * dela (LGPD, art. 11), e só significa alguma coisa em relação ao rosto. Numa
+ * coluna separada, "Sem consentimento" aparecia em vinte linhas seguidas de
+ * gente recém-cadastrada, com cara de pendência do cadastro: a tela gritava
+ * sobre algo que ninguém tinha deixado de fazer, e a palavra "situação"
+ * passava a significar duas coisas ao mesmo tempo (vínculo e autorização).
+ *
+ * Aqui ele é o que de fato é: o primeiro dos dois passos que faltam para a
+ * pessoa ser reconhecida na portaria.
+ */
+function estadoFacial(p: Pessoa): { estado: Estado; texto: string; nota: string } {
+  if (p.biometrias === 0 && !p.consentimento_vigente) {
+    return {
+      estado: 'neutro',
+      texto: 'Termo pendente',
+      nota: 'Falta o consentimento antes de cadastrar o rosto.',
+    };
+  }
+  if (p.biometrias === 0) {
+    return {
+      estado: 'aviso',
+      texto: 'Sem rosto',
+      nota: 'Termo registrado; faltam as fotos.',
+    };
+  }
+  if (p.biometrias < 3) {
+    return {
+      estado: 'aviso',
+      texto: `${p.biometrias} captura${p.biometrias === 1 ? '' : 's'}`,
+      nota: 'O recomendado são 3, em ângulos e iluminações diferentes.',
+    };
+  }
+  return {
+    estado: 'ok',
+    texto: `${p.biometrias} capturas`,
+    nota: 'Pronta para ser reconhecida na portaria.',
+  };
+}
+
+const formatarDia = (iso: string | null) =>
+  iso ? new Date(`${iso}T12:00:00Z`).toLocaleDateString('pt-BR') : '—';
 
 export function Pessoas() {
   const [itens, setItens] = useState<Pessoa[]>([]);
   const [total, setTotal] = useState(0);
   const [pagina, setPagina] = useState(0);
   const [busca, setBusca] = useState('');
+  const [filtro, setFiltro] = useState<Filtro>('ativos');
   const [erro, setErro] = useState<string | null>(null);
-  const [ok, setOk] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(true);
-  const [novaAberta, setNovaAberta] = useState(false);
-  const [rostoAberto, setRostoAberto] = useState<number | null>(null);
-  const [nova, setNova] = useState({ nome: '', funcao: '' });
+
+  /**
+   * Ficha aberta: `undefined` = nenhuma, `null` = cadastro novo, objeto =
+   * edição daquela pessoa. Três estados num campo só porque são de fato
+   * exclusivos — dois booleanos permitiriam "cadastrando e editando".
+   */
+  const [ficha, setFicha] = useState<Pessoa | null | undefined>(undefined);
 
   const carregar = useCallback(async () => {
     setCarregando(true);
@@ -25,6 +83,7 @@ export function Pessoas() {
     try {
       const p = await api.pessoas({
         busca: busca || undefined,
+        ativo: filtro === 'todos' ? undefined : filtro === 'ativos',
         limite: POR_PAGINA,
         offset: pagina * POR_PAGINA,
       });
@@ -35,61 +94,14 @@ export function Pessoas() {
     } finally {
       setCarregando(false);
     }
-  }, [busca, pagina]);
+  }, [busca, filtro, pagina]);
 
   useEffect(() => {
     void carregar();
   }, [carregar]);
 
-  async function agir(acao: () => Promise<unknown>, mensagem: string) {
-    setErro(null);
-    setOk(null);
-    try {
-      await acao();
-      setOk(mensagem);
-      await carregar();
-    } catch (e) {
-      setErro(e instanceof ErroApi ? e.message : 'Falha na operação.');
-    }
-  }
-
-  async function criar(e: FormEvent) {
-    e.preventDefault();
-    await agir(
-      () =>
-        api.criarPessoa({
-          nome: nova.nome.trim(),
-          funcao: nova.funcao.trim() || null,
-          // O gerador trata campo com default como obrigatorio no corpo;
-          // ser explicito aqui e mais claro que configurar o gerador.
-          ativo: true,
-        }),
-      `${nova.nome} cadastrado.`,
-    );
-    setNova({ nome: '', funcao: '' });
-    setNovaAberta(false);
-  }
-
-  function revogar(p: Pessoa) {
-    const confirmado = window.confirm(
-      `Revogar o consentimento de ${p.nome}?\n\n` +
-        `Isso APAGA os ${p.biometrias} vetor(es) faciais dela, de forma ` +
-        `permanente. A pessoa deixa de ser reconhecida no terminal até ser ` +
-        `cadastrada de novo.\n\n` +
-        `A eliminação do dado é o que a LGPD exige na revogação — não há ` +
-        `como desfazer.`,
-    );
-    if (!confirmado) return;
-    void agir(async () => {
-      const r = await api.revogar(p.id);
-      setOk(`Consentimento revogado. ${r.biometrias_eliminadas} vetor(es) eliminado(s).`);
-    }, '');
-  }
-
   const ultimaPagina = Math.max(0, Math.ceil(total / POR_PAGINA) - 1);
-
-  /** Pessoa com o painel de cadastro facial aberto, se houver. */
-  const emCadastro = itens.find((p) => p.id === rostoAberto) ?? null;
+  const pendentes = itens.filter((p) => p.ativo && p.biometrias === 0).length;
 
   return (
     <>
@@ -98,49 +110,39 @@ export function Pessoas() {
           <p className="eyebrow">Cadastro</p>
           <h1>Pessoas</h1>
           <p className="subtitulo">
-            {total} cadastrada{total === 1 ? '' : 's'} ·{' '}
-            {itens.filter((p) => p.biometrias > 0).length} com rosto nesta página
+            {total} {filtro === 'inativos' ? 'inativo' : 'cadastrado'}
+            {total === 1 ? '' : 's'}
+            {pendentes > 0 ? (
+              <>
+                {' · '}
+                <b>{pendentes}</b> nesta página ainda não {pendentes === 1 ? 'passa' : 'passam'}{' '}
+                na portaria
+              </>
+            ) : null}
           </p>
         </div>
-        <button className="primario" onClick={() => setNovaAberta((v) => !v)}>
-          <Icone caminho={novaAberta ? mdiClose : mdiAccountPlusOutline} />
-          {novaAberta ? 'Cancelar' : 'Nova pessoa'}
+        {/*
+          Um botão, uma ação. Ele alternava entre "Novo funcionário" e
+          "Fechar ficha", e a ficha já tem o próprio "Fechar" — eram dois
+          botões de fechar lado a lado dizendo a mesma coisa.
+        */}
+        <button className="primario" onClick={() => setFicha(null)}>
+          <Icone caminho={mdiAccountPlusOutline} />
+          Novo funcionário
         </button>
       </div>
 
       {erro ? <Aviso tipo="erro">{erro}</Aviso> : null}
-      {ok ? <Aviso tipo="ok">{ok}</Aviso> : null}
 
-      {novaAberta ? (
-        <form className="cartao" onSubmit={criar} style={{ marginBottom: 18 }}>
-          <div className="filtros" style={{ marginBottom: 0 }}>
-            <Campo rotulo="Nome">
-              <input
-                value={nova.nome}
-                onChange={(e) => setNova({ ...nova, nome: e.target.value })}
-                required
-                autoFocus
-                style={{ minWidth: 260 }}
-              />
-            </Campo>
-            <Campo rotulo="Função">
-              <input
-                value={nova.funcao}
-                onChange={(e) => setNova({ ...nova, funcao: e.target.value })}
-              />
-            </Campo>
-            <button className="primario" type="submit">
-              Cadastrar
-            </button>
-          </div>
-        </form>
-      ) : null}
-
-      {emCadastro ? (
-        <CadastroRosto
-          pessoa={emCadastro}
-          aoFechar={() => setRostoAberto(null)}
-          aoCadastrar={() => void carregar()}
+      {ficha !== undefined ? (
+        <FichaPessoa
+          // Trocar de pessoa precisa REMONTAR o componente: sem a key, o
+          // React reaproveita a instância e os campos continuariam com os
+          // dados de quem estava aberto antes.
+          key={ficha?.id ?? 'nova'}
+          pessoa={ficha}
+          aoFechar={() => setFicha(undefined)}
+          aoMudar={() => void carregar()}
         />
       ) : null}
 
@@ -152,17 +154,34 @@ export function Pessoas() {
               setBusca(e.target.value);
               setPagina(0);
             }}
-            placeholder="nome do funcionário"
+            placeholder="nome, matrícula ou setor"
+            style={{ minWidth: 240 }}
           />
         </Campo>
+        <div style={{ display: 'flex', gap: 6, alignSelf: 'flex-end' }}>
+          {FILTROS.map((f) => (
+            <button
+              key={f.chave}
+              className={f.chave === filtro ? 'primario pequeno' : 'pequeno'}
+              onClick={() => {
+                setFiltro(f.chave);
+                setPagina(0);
+              }}
+            >
+              {f.rotulo}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="rolagem">
         <table>
           <thead>
             <tr>
-              <th>Nome</th>
+              <th>Funcionário</th>
               <th>Função</th>
+              <th>Setor</th>
+              <th>Admissão</th>
               <th>Cadastro facial</th>
               <th>Situação</th>
               <th />
@@ -171,86 +190,57 @@ export function Pessoas() {
           <tbody>
             {itens.length === 0 && !carregando ? (
               <tr>
-                <td colSpan={5} className="vazio">
+                <td colSpan={7} className="vazio">
                   Nenhuma pessoa encontrada.
                 </td>
               </tr>
             ) : (
-              itens.map((p) => (
-                <tr key={p.id}>
-                  <td>
-                    {p.nome}{' '}
-                    {/* O id interno ajuda no suporte: e por ele que a pessoa
-                        aparece no log do servidor. */}
-                    <span className="mono" style={{ color: 'var(--slate-400)' }}>
-                      #{p.id}
-                    </span>
-                  </td>
-                  <td>{p.funcao ?? '—'}</td>
-                  <td>
-                    {p.biometrias === 0 ? (
-                      <Pastilha estado="neutro">Sem rosto</Pastilha>
-                    ) : (
-                      <Pastilha estado={p.biometrias >= 3 ? 'ok' : 'aviso'}>
-                        {p.biometrias} captura{p.biometrias === 1 ? '' : 's'}
+              itens.map((p) => {
+                const facial = estadoFacial(p);
+                return (
+                  <tr key={p.id}>
+                    <td>
+                      <div>{p.nome}</div>
+                      <span className="mono" style={{ color: 'var(--slate-400)', fontSize: 12 }}>
+                        {/* A matrícula é o identificador do RH; o id interno
+                            é por onde a pessoa aparece no log do servidor, e
+                            é o que o suporte pede. */}
+                        {p.matricula ? `${p.matricula} · ` : ''}#{p.id}
+                      </span>
+                    </td>
+                    <td>{p.funcao ?? '—'}</td>
+                    <td>{p.setor ?? '—'}</td>
+                    <td>{formatarDia(p.admitido_em)}</td>
+                    <td>
+                      <span title={facial.nota}>
+                        <Pastilha estado={facial.estado}>{facial.texto}</Pastilha>
+                      </span>
+                    </td>
+                    <td>
+                      <Pastilha estado={p.ativo ? 'ok' : 'neutro'}>
+                        {p.ativo ? 'Ativo' : 'Inativo'}
                       </Pastilha>
-                    )}
-                  </td>
-                  <td>
-                    {!p.ativo ? (
-                      <Pastilha estado="neutro">Inativa</Pastilha>
-                    ) : p.consentimento_vigente ? (
-                      <Pastilha estado="ok">Consentimento ativo</Pastilha>
-                    ) : (
-                      <Pastilha estado="aviso">Sem consentimento</Pastilha>
-                    )}
-                  </td>
-                  <td style={{ whiteSpace: 'nowrap' }}>
-                    <button
-                      className="pequeno"
-                      onClick={() => setRostoAberto(rostoAberto === p.id ? null : p.id)}
-                      disabled={!p.consentimento_vigente}
-                      title={
-                        p.consentimento_vigente
-                          ? undefined
-                          : 'Registre o consentimento antes de cadastrar o rosto.'
-                      }
-                      style={{ marginRight: 8 }}
-                    >
-                      <Icone caminho={mdiCameraPlusOutline} />
-                      Rosto
-                    </button>
-                    {p.consentimento_vigente ? (
-                      <button className="pequeno perigo" onClick={() => revogar(p)}>
-                        Revogar
+                    </td>
+                    <td style={{ whiteSpace: 'nowrap' }}>
+                      <button className="pequeno" onClick={() => setFicha(p)}>
+                        <Icone caminho={mdiPencilOutline} />
+                        Abrir ficha
                       </button>
-                    ) : (
-                      <button
-                        className="pequeno"
-                        onClick={() =>
-                          void agir(
-                            () => api.consentir(p.id, VERSAO_TERMO),
-                            `Consentimento registrado para ${p.nome}.`,
-                          )
-                        }
-                      >
-                        Registrar consentimento
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))
+                    </td>
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>
       </div>
 
       <Aviso>
-        O <b>cadastro do rosto</b> acontece aqui e também pelo tablet — os dois
-        rodam o mesmo FaceNet, sobre o mesmo arquivo de modelo. A foto enviada
-        por esta tela vira vetor no servidor e é descartada na hora: nada de
-        imagem fica guardado. O consentimento é pré-requisito, e o servidor
-        recusa gravar biometria sem ele.
+        A <b>ficha</b> reúne os três passos do cadastro: dados, termo de
+        consentimento e fotos. A foto enviada vira vetor no servidor e é
+        descartada na hora — nenhuma imagem fica guardada, nem em disco, nem no
+        banco, nem no bucket. Desativar alguém preserva todo o histórico de
+        passagens; para eliminar a biometria, o caminho é revogar o termo.
       </Aviso>
 
       <div className="filtros">

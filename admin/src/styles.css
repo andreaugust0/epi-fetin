@@ -560,6 +560,25 @@ select:focus {
   border-color: var(--primary);
 }
 
+/*
+ * A regra acima vale para `input` em geral e engolia a caixa de seleção:
+ * 10px de padding num checkbox de 13px o transformavam num quadrado azul
+ * do tamanho de um botão, maior que o texto ao lado. Aqui ele volta a ser
+ * um checkbox.
+ */
+input[type='checkbox'],
+input[type='radio'] {
+  width: 16px;
+  height: 16px;
+  /* `min-width`/`min-height` vencem `width`/`height`: sem zerar os dois, a
+     caixa continua com os 160x42 da regra de campo de texto. */
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  flex: none;
+  accent-color: var(--primary);
+}
+
 button {
   font-family: inherit;
   font-size: 14px;

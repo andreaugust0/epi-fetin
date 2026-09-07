@@ -140,6 +140,15 @@ class Pessoa(Base):
     )
     nome: Mapped[str] = mapped_column(Text)
     funcao: Mapped[str | None] = mapped_column(Text, nullable=True)
+    #: Área da planta. Não é enfeite de cadastro: é por setor que se decide
+    #: quais EPIs são exigidos e a quem um treinamento se dirige. "A
+    #: manutenção esquece o protetor auricular" é uma frase acionável;
+    #: "algumas pessoas esquecem" não é.
+    setor: Mapped[str | None] = mapped_column(Text, nullable=True)
+    #: Data de admissão — data, não data-hora. Ninguém é admitido às 14h37,
+    #: e guardar hora aqui só criaria mais um fuso para errar. Serve para
+    #: distinguir quem errou por ser novo de quem erra há dois anos.
+    admitido_em: Mapped[date | None] = mapped_column(Date, nullable=True)
     ativo: Mapped[bool] = mapped_column(Boolean, default=True)
     criado_em: Mapped[datetime] = _ts()
 

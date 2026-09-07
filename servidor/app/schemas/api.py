@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
@@ -275,6 +275,8 @@ class TipoEpiIn(BaseModel):
 class PessoaIn(BaseModel):
     nome: str = Field(min_length=1)
     funcao: str | None = None
+    setor: str | None = None
+    admitido_em: date | None = None
     #: Opcional — nem toda operação usa matrícula.
     matricula: str | None = Field(default=None, max_length=40)
     ativo: bool = True
@@ -283,6 +285,8 @@ class PessoaIn(BaseModel):
 class PessoaPatch(BaseModel):
     nome: str | None = None
     funcao: str | None = None
+    setor: str | None = None
+    admitido_em: date | None = None
     matricula: str | None = None
     ativo: bool | None = None
 
@@ -292,6 +296,8 @@ class PessoaOut(BaseModel):
     matricula: str | None
     nome: str
     funcao: str | None
+    setor: str | None
+    admitido_em: date | None
     ativo: bool
     biometrias: int
     consentimento_vigente: bool

@@ -681,6 +681,13 @@ export interface components {
             nome: string;
             /** Funcao */
             funcao: string | null;
+            /** Setor */
+            setor: string | null;
+            /**
+             * Admitido Em
+             * @description Data ISO (YYYY-MM-DD), sem hora.
+             */
+            admitido_em: string | null;
             /** Ativo */
             ativo: boolean;
             /** Biometrias */
@@ -703,6 +710,13 @@ export interface components {
             nome: string;
             /** Funcao */
             funcao?: string | null;
+            /** Setor */
+            setor?: string | null;
+            /**
+             * Admitido Em
+             * @description Data ISO (YYYY-MM-DD), sem hora.
+             */
+            admitido_em?: string | null;
             /** Matricula */
             matricula?: string | null;
             /**
@@ -721,6 +735,13 @@ export interface components {
             nome: string;
             /** Funcao */
             funcao: string | null;
+            /** Setor */
+            setor: string | null;
+            /**
+             * Admitido Em
+             * @description Data ISO (YYYY-MM-DD), sem hora.
+             */
+            admitido_em: string | null;
             /** Ativo */
             ativo: boolean;
             /** Biometrias */
@@ -734,6 +755,13 @@ export interface components {
             nome?: string | null;
             /** Funcao */
             funcao?: string | null;
+            /** Setor */
+            setor?: string | null;
+            /**
+             * Admitido Em
+             * @description Data ISO (YYYY-MM-DD), sem hora.
+             */
+            admitido_em?: string | null;
             /** Matricula */
             matricula?: string | null;
             /** Ativo */

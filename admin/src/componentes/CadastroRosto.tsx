@@ -36,11 +36,18 @@ export function CadastroRosto({
   pessoa,
   aoFechar,
   aoCadastrar,
+  embutida = false,
 }: {
   pessoa: Pessoa;
   aoFechar: () => void;
   /** Avisa a lista para recontar as biometrias. */
   aoCadastrar: () => void;
+  /**
+   * Dentro da ficha do funcionário, onde o cartão, o título e o botão de
+   * fechar já existem em volta. Repeti-los aqui daria dois cabeçalhos e dois
+   * "Fechar" na mesma tela, e o de dentro fecharia a ficha inteira.
+   */
+  embutida?: boolean;
 }) {
   const [resultados, setResultados] = useState<Resultado[]>([]);
   const [enviando, setEnviando] = useState(false);
@@ -84,7 +91,10 @@ export function CadastroRosto({
   const repetidas = resultados.filter((r) => r.detalhe?.quase_identica).length;
 
   return (
-    <div className="cartao" style={{ marginBottom: 18 }}>
+    <div
+      className={embutida ? undefined : 'cartao'}
+      style={embutida ? undefined : { marginBottom: 18 }}
+    >
       <div
         style={{
           display: 'flex',
@@ -95,8 +105,10 @@ export function CadastroRosto({
         }}
       >
         <div>
-          <b style={{ fontSize: 17, fontWeight: 700 }}>Cadastro facial · {pessoa.nome}</b>
-          <p style={{ color: 'var(--slate-500)', fontSize: 13, margin: '4px 0 0' }}>
+          {embutida ? null : (
+            <b style={{ fontSize: 17, fontWeight: 700 }}>Cadastro facial · {pessoa.nome}</b>
+          )}
+          <p style={{ color: 'var(--slate-500)', fontSize: 13, margin: embutida ? 0 : '4px 0 0' }}>
             {total} captura{total === 1 ? '' : 's'} no total
             {total < ALVO_CAPTURAS
               ? ` — o recomendado são ${ALVO_CAPTURAS}`
@@ -105,10 +117,12 @@ export function CadastroRosto({
                 : ''}
           </p>
         </div>
-        <button className="pequeno" onClick={aoFechar}>
-          <Icone caminho={mdiClose} />
-          Fechar
-        </button>
+        {embutida ? null : (
+          <button className="pequeno" onClick={aoFechar}>
+            <Icone caminho={mdiClose} />
+            Fechar
+          </button>
+        )}
       </div>
 
       {!pessoa.consentimento_vigente ? (

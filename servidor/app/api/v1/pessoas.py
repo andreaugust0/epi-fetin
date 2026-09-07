@@ -64,7 +64,11 @@ async def listar(
         alvo = f"%{busca.strip()}%"
         # ilike em coluna NULL devolve NULL, que o WHERE trata como falso —
         # então quem não tem matrícula continua achável pelo nome.
-        filtros.append(Pessoa.nome.ilike(alvo) | Pessoa.matricula.ilike(alvo))
+        filtros.append(
+            Pessoa.nome.ilike(alvo)
+            | Pessoa.matricula.ilike(alvo)
+            | Pessoa.setor.ilike(alvo)
+        )
     if ativo is not None:
         filtros.append(Pessoa.ativo.is_(ativo))
 
@@ -87,6 +91,7 @@ async def listar(
             continue
         itens.append(PessoaOut(
             id=p.id, matricula=p.matricula, nome=p.nome, funcao=p.funcao,
+            setor=p.setor, admitido_em=p.admitido_em,
             ativo=p.ativo, biometrias=n, consentimento_vigente=consent,
         ))
     return PaginaPessoas(total=total, itens=itens)
@@ -124,6 +129,7 @@ async def criar(
     await db.commit()
     return PessoaOut(
         id=p.id, matricula=p.matricula, nome=p.nome, funcao=p.funcao,
+        setor=p.setor, admitido_em=p.admitido_em,
         ativo=p.ativo, biometrias=0, consentimento_vigente=False,
     )
 
@@ -155,6 +161,7 @@ async def obter(
 
     return PessoaDetalhe(
         id=p.id, matricula=p.matricula, nome=p.nome, funcao=p.funcao,
+        setor=p.setor, admitido_em=p.admitido_em,
         ativo=p.ativo, biometrias=n, consentimento_vigente=consent,
         criado_em=p.criado_em, total_verificacoes=total_verif,
         ultima_verificacao=ultima,
@@ -184,6 +191,7 @@ async def atualizar(
     n, consent = await _resumo_biometria(db, pessoa_id)
     return PessoaOut(
         id=p.id, matricula=p.matricula, nome=p.nome, funcao=p.funcao,
+        setor=p.setor, admitido_em=p.admitido_em,
         ativo=p.ativo, biometrias=n, consentimento_vigente=consent,
     )
 

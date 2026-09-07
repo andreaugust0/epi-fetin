@@ -52,6 +52,34 @@ async def matricula_opcional() -> None:
     print("  pessoas.matricula agora aceita NULL")
 
 
+#: Colunas cadastrais acrescentadas depois que a tabela já existia.
+#: `ADD COLUMN IF NOT EXISTS` torna o passo repetível sem try/except em
+#: volta — o Postgres decide se há o que fazer, em vez de nós adivinharmos
+#: pelo tipo da exceção.
+COLUNAS_PESSOA = [
+    ("setor", "TEXT"),
+    ("admitido_em", "DATE"),
+]
+
+
+async def campos_cadastrais() -> None:
+    """Acrescenta setor e data de admissão a `pessoas`.
+
+    São dados que o RH preenche e que o painel usa para dizer QUEM precisa
+    de treinamento e ONDE — sem setor, o relatório de reincidência aponta
+    dez nomes soltos em vez de "a manutenção do turno da manhã".
+
+    Ambas são anuláveis de propósito: quem já está cadastrado não some nem
+    vira inválido por não ter esses campos.
+    """
+    async with engine.begin() as conn:
+        for coluna, tipo in COLUNAS_PESSOA:
+            await conn.execute(
+                text(f"ALTER TABLE pessoas ADD COLUMN IF NOT EXISTS {coluna} {tipo}")
+            )
+            print(f"  pessoas.{coluna} presente ({tipo})")
+
+
 async def catalogo() -> None:
     async with SessionLocal() as db:
         existentes = {
@@ -90,7 +118,10 @@ async def main() -> None:
         # Já anulável, ou banco novo criado direto pelo create_all.
         print(f"  nada a fazer ({type(exc).__name__})")
 
-    print("\n2. catálogo de EPIs")
+    print("\n2. campos cadastrais de pessoas")
+    await campos_cadastrais()
+
+    print("\n3. catálogo de EPIs")
     await catalogo()
 
     async with SessionLocal() as db:
