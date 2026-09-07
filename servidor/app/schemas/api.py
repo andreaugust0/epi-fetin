@@ -100,6 +100,62 @@ class DeteccaoOut(ORMModel):
     )
 
 
+class RostoCadastradoOut(BaseModel):
+    """Resultado de um cadastro biométrico feito a partir de uma foto.
+
+    Devolve bem mais que "ok": devolve o que foi MEDIDO. Quem cadastra
+    precisa poder ver o recorte que virou o vetor e a distância para os
+    vetores que já existiam — sem isso, um cadastro errado só apareceria
+    semanas depois, como uma pessoa que a catraca nunca reconhece.
+    """
+
+    biometria_id: int
+    modelo: str
+    qualidade: float = Field(description="Confiança do detector de rosto, 0 a 1.")
+    caixa_rosto: dict[str, int] = Field(
+        description="Onde o rosto foi encontrado na foto original, em pixels."
+    )
+    caixa_recorte: dict[str, int] = Field(
+        description="O quadrado efetivamente recortado e redimensionado para 160x160."
+    )
+    recorte_base64: str = Field(
+        description=(
+            "PNG 160x160 do recorte, em base64. É o que o modelo realmente "
+            "viu — a única forma de alguém perceber que o detector pegou a "
+            "pessoa errada ou um pedaço do fundo."
+        )
+    )
+    distancia_menor: float | None = Field(
+        default=None,
+        description=(
+            "Menor distância de cosseno entre este vetor e os que a pessoa "
+            "já tinha. Serve de medida de compatibilidade entre o cadastro "
+            "pelo painel e o que o tablet gerou: perto de zero é o mesmo "
+            "rosto no mesmo espaço; alto demais indica que os dois caminhos "
+            "não estão produzindo vetores comparáveis."
+        ),
+    )
+    compativel: bool | None = Field(
+        default=None,
+        description=(
+            "Falso quando `distancia_menor` passou de FACE_DISTANCIA_ALERTA. "
+            "Nulo quando esta é a primeira biometria da pessoa e não há com "
+            "o que comparar."
+        ),
+    )
+    quase_identica: bool = Field(
+        default=False,
+        description=(
+            "A foto é praticamente igual a uma já cadastrada. Não é erro — "
+            "foi gravada — mas não acrescenta variação, e é variação que "
+            "melhora o reconhecimento."
+        ),
+    )
+    total_biometrias: int = Field(
+        description="Quantos embeddings a pessoa tem depois deste cadastro."
+    )
+
+
 class PoliticaOut(BaseModel):
     """Os limiares que decidem, para quem precisa explicar uma decisão.
 

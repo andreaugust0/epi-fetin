@@ -16,6 +16,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app ./app
 COPY scripts ./scripts
+# 230 KB do detector de rosto. O FaceNet NÃO entra na imagem:
+# ele vem por volume do repositório do tablet, para não haver
+# duas cópias do mesmo modelo podendo divergir.
+COPY modelos ./modelos
 
 # Usuário sem privilégios. Rodar como root dentro do contêiner é o padrão
 # e é desnecessário aqui.

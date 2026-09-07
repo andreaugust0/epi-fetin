@@ -102,6 +102,40 @@ class Settings(BaseSettings):
     # indevida (irmãos, gêmeos, base pequena).
     FACE_RAZAO_MIN: float = 1.15
 
+    # ------------------------------------------------- cadastro por foto
+    # O FaceNet vive no repositório do TABLET (94 MB, versionado lá) e chega
+    # aqui por volume — ver docker-compose.yml. Duplicá-lo no servidor seria
+    # 94 MB repetidos e, pior, dois arquivos que podem divergir: o dia em que
+    # um for trocado e o outro não, o cadastro pelo painel passa a gerar
+    # vetores incomparáveis com os do tablet, em silêncio.
+    FACE_ONNX: str = "/dados/tablet/models/facenet_vggface2.onnx"
+
+    # Detector de rosto do lado do servidor. YuNet porque é leve (230 KB),
+    # roda em ONNX sem trazer torch junto, e vive no próprio repositório.
+    # NÃO é o mesmo detector do tablet (ML Kit não roda fora do Android) —
+    # a consequência disso está documentada em app/services/rosto.py.
+    FACE_DETECTOR_ONNX: str = "modelos/face_detection_yunet_2023mar.onnx"
+
+    # Confiança mínima do detector para considerar que ali há um rosto.
+    FACE_DETECCAO_MIN: float = 0.7
+
+    # Acima desta distância, o vetor gerado pelo painel é tratado como
+    # incompatível com os que o tablet já gravou para a mesma pessoa. É a
+    # medida de descasamento entre os dois pipelines — ver rosto.py.
+    FACE_DISTANCIA_ALERTA: float = 0.30
+
+    # Abaixo desta distância, a foto nova é praticamente a mesma imagem de
+    # uma já cadastrada. Não é erro e não é recusada — mas também não
+    # acrescenta nada: o enrollment melhora com ÂNGULOS e ILUMINAÇÕES
+    # diferentes, e dez cópias da mesma foto dão a mesma informação que
+    # uma, enquanto a tela conta "dez capturas" e passa uma confiança que
+    # não existe.
+    FACE_DISTANCIA_MIN_NOVA: float = 0.01
+
+    # Teto do upload de foto para cadastro. Fotos de celular moderno passam
+    # de 5 MB com facilidade; acima disto é quase sempre engano.
+    FOTO_CADASTRO_MAX_MB: int = 12
+
     # Quantos vizinhos buscar no pgvector antes de aplicar as regras.
     FACE_TOP_K: int = 5
 

@@ -27,3 +27,10 @@ python-multipart==0.0.20
 
 # simuladores de dispositivo (paho síncrono, como numa Raspberry real)
 paho-mqtt==2.1.0
+
+# cadastro biométrico pelo painel: o mesmo FaceNet do tablet rodando aqui.
+# onnxruntime para o modelo; opencv-headless (sem GTK, sem X11) para
+# decodificar a foto, detectar o rosto e redimensionar o recorte.
+onnxruntime==1.20.1
+opencv-python-headless==4.10.0.84
+numpy==1.26.4

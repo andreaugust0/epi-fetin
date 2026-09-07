@@ -103,6 +103,13 @@ services:
       DB_HOST: db
       MQTT_HOST: broker
       S3_ENDPOINT: http://storage:9000
+    volumes:
+      # O FaceNet do TABLET, montado só para leitura. O cadastro biométrico
+      # pelo painel roda o mesmo modelo que o tablet roda — e "o mesmo"
+      # aqui é literal: o mesmo arquivo, não uma cópia. Duas cópias podem
+      # divergir, e no dia em que divergirem os vetores gerados de cada
+      # lado deixam de ser comparáveis sem ninguém perceber.
+      - ../tablet/assets:/dados/tablet:ro
     ports:
       - "8000:8000"
     depends_on:
