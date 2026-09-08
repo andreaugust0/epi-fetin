@@ -122,20 +122,66 @@ def _corpo(texto: str, declaracao: str) -> str | None:
     return achado.group(1) if achado else None
 
 
-def codigos_de_ts(texto: str) -> list[str]:
-    """Chaves do objeto CATALOGO_EPI num arquivo TypeScript."""
-    corpo = _corpo(texto, "CATALOGO_EPI")
-    if corpo is None:
-        return []
-    return re.findall(r"^\s{2}(\w+)\s*:", corpo, re.M)
+def _corpo_lista(texto: str, declaracao: str) -> str | None:
+    """O miolo de `NOME ... = [ ... ]`, ancorado no início de linha.
+
+    Irmã de `_corpo`, para quando o catálogo é uma lista de objetos em vez
+    de um objeto de chaves.
+    """
+    achado = re.search(
+        rf"^(?:export const )?{declaracao}[^=]*=\s*\[(.*?)^\]",
+        texto, re.S | re.M,
+    )
+    return achado.group(1) if achado else None
+
+
+def codigos_de_ts(texto: str) -> list[str] | None:
+    """Os códigos de EPI declarados num arquivo TypeScript.
+
+    Devolve `None` quando NÃO ENCONTRA nenhuma das declarações conhecidas —
+    e essa distinção é o ponto desta função.
+
+    As duas pontas escrevem o catálogo de formas diferentes, e sempre
+    escreveram: o admin como objeto de chaves (`CATALOGO_EPI = { capacete:
+    {...} }`), o tablet como lista de objetos (`EPI_CATALOG = [{ id:
+    'capacete' }]`). O leitor só conhecia a primeira forma, então no tablet
+    ele não achava nada e devolvia lista vazia — que `comparar` relatava
+    como "0 códigos, faltam todos os sete".
+
+    Ou seja: o conferidor acusava divergência total num arquivo correto, e
+    fazia isso desde sempre. Uma checagem que falha sempre é pior que
+    checagem nenhuma, porque ensina a ignorar o resultado — e no dia em que
+    houvesse divergência de verdade, ela sairia idêntica ao ruído de fundo.
+
+    Por isso "não sei ler" (`None`) e "li e está diferente" (lista) são
+    respostas distintas: só a segunda é divergência de catálogo.
+    """
+    objeto = _corpo(texto, "CATALOGO_EPI")
+    if objeto is not None:
+        return re.findall(r"^\s{2}(\w+)\s*:", objeto, re.M)
+
+    lista = _corpo_lista(texto, "EPI_CATALOG")
+    if lista is not None:
+        return re.findall(r"^\s*id:\s*[\"\'](\w+)[\"\']", lista, re.M)
+
+    return None
 
 
 def conferir_ts(nome: str, caminho: Path) -> None:
     if not caminho.is_file():
         pulado(f"{nome} — {caminho.relative_to(MONOREPO)} não existe aqui")
         return
-    comparar(f"{nome} ({caminho.name})", codigos_de_ts(
-        caminho.read_text(encoding="utf-8")))
+
+    codigos = codigos_de_ts(caminho.read_text(encoding="utf-8"))
+    if codigos is None:
+        falha(
+            f"{nome} ({caminho.name}) — não achei o catálogo neste arquivo",
+            "esperava `CATALOGO_EPI = {...}` ou `EPI_CATALOG = [...]`; "
+            "se a declaração foi renomeada, ajuste `codigos_de_ts`",
+        )
+        return
+
+    comparar(f"{nome} ({caminho.name})", codigos)
 
 
 def conferir_borda(caminho: Path) -> None:
