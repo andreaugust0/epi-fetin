@@ -10,7 +10,7 @@ export const APP_MESSAGES = {
     equipmentCountSuffixSingular: 'equipamento exigido',
     startButton: 'Iniciar',
     simulationNotice:
-      'Modo simulado: os resultados são gerados localmente até que a integração com a detecção real seja configurada.',
+      'Modo simulado: este tablet não está provisionado. Os resultados são gerados no próprio aparelho e nada é registrado no servidor.',
     noEquipmentTitle: 'Nenhum equipamento ativo',
     noEquipmentDescription: 'Nenhum equipamento está configurado para verificação neste terminal.',
   },

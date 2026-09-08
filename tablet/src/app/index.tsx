@@ -1,14 +1,15 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import { useCallback } from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
-import { EmptyState, ErrorState, LoadingState } from '@/components/feedback';
+import { EmptyState, ErrorState, InlineNotice, LoadingState } from '@/components/feedback';
 import { Screen, StepIndicator } from '@/components/layout';
 import { Button, Text } from '@/components/ui';
 import { APP_MESSAGES } from '@/constants/messages';
 import { EpiGrid } from '@/features/epi-detection/components';
 import { useRequiredEpis } from '@/features/epi-detection/hooks/useRequiredEpis';
+import { isFaceApiConfigured } from '@/features/face-recognition/services/faceApiConfig';
 import { useHaptics } from '@/hooks/useHaptics';
 import { useTerminalMetrics } from '@/hooks/useTerminalMetrics';
 import { colors, radii, spacing } from '@/theme';
@@ -18,6 +19,39 @@ export default function HomeScreen() {
   const { requiredEpis, loading, error, reload } = useRequiredEpis();
   const { impact } = useHaptics();
   const metrics = useTerminalMetrics();
+
+  /**
+   * Provisionado ou não — `null` enquanto não se sabe.
+   *
+   * Três estados, e não um booleano, porque o valor vem de armazenamento
+   * assíncrono: com `false` inicial o aviso de modo simulado piscaria em toda
+   * abertura, inclusive num terminal configurado corretamente. Um aviso que
+   * aparece quando não deveria é um aviso que se aprende a ignorar.
+   */
+  const [provisionado, setProvisionado] = useState<boolean | null>(null);
+
+  /**
+   * Reconferido a cada foco, não só na montagem: o caminho normal é sair
+   * daqui para o provisionamento e voltar. Sem isso, o aviso continuaria na
+   * tela depois de o tablet já estar configurado.
+   */
+  useFocusEffect(
+    useCallback(() => {
+      let vivo = true;
+      void isFaceApiConfigured()
+        .then((ok) => {
+          if (vivo) setProvisionado(ok);
+        })
+        .catch(() => {
+          // Falha ao ler o armazenamento não vira acusação de modo simulado:
+          // sem saber, o aviso não aparece.
+          if (vivo) setProvisionado(null);
+        });
+      return () => {
+        vivo = false;
+      };
+    }, []),
+  );
 
   /** Única ação do terminal: começar pela identificação do funcionário. */
   const handleStart = useCallback(() => {
@@ -90,6 +124,22 @@ export default function HomeScreen() {
           >
             {APP_MESSAGES.home.subtitle}
           </Text>
+
+          {/*
+            Sem provisionamento, o app cai no MockEpiVerificationService e
+            segue funcionando: mostra aprovado ou reprovado, gerado no próprio
+            aparelho, sem falar com o servidor. Nada distinguia isso de uma
+            verificação real — a descoberta acontecia depois, ao procurar o
+            registro no painel e achar a lista vazia.
+          */}
+          {provisionado === false ? (
+            <InlineNotice
+              message={APP_MESSAGES.home.simulationNotice}
+              icon="alert-outline"
+              tone="warning"
+              style={styles.aviso}
+            />
+          ) : null}
         </View>
 
         {requiredEpis.length === 0 ? (
@@ -140,6 +190,10 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     maxWidth: 520,
+  },
+  aviso: {
+    maxWidth: 520,
+    marginTop: spacing.sm,
   },
   /**
    * A grade toma o espaço que sobra entre o cabeçalho e o botão, centrada.
