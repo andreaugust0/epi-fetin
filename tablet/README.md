@@ -111,14 +111,44 @@ npm run ios
 
 Requer macOS com Xcode instalado. Em outros sistemas operacionais, use o Expo Go em um iPhone.
 
-### Expo Go
+### Expo Go não serve mais
 
-1. Instale o **Expo Go** ([Android](https://play.google.com/store/apps/details?id=host.exp.exponent) /
-   [iOS](https://apps.apple.com/app/expo-go/id982107779)).
-2. Rode `npx expo start`.
-3. Escaneie o QR Code — no Android pelo próprio Expo Go, no iOS pela câmera do sistema.
-4. O celular e o computador precisam estar na mesma rede. Em redes restritas, use
-   `npx expo start --tunnel`.
+O aplicativo depende de módulos nativos que o Expo Go não embute —
+`onnxruntime-react-native` (o FaceNet), `@infinitered/react-native-mlkit-face-detection`
+(a detecção de rosto) e `expo-secure-store` (o token do dispositivo). Com o Expo Go o
+app até abre, mas quebra na primeira tela que usa qualquer um deles.
+
+O caminho são os dois builds abaixo.
+
+### Os dois builds, e por que são dois
+
+| Perfil | O que é | Instala como |
+|---|---|---|
+| `development` | Carrega o JavaScript do Metro. Salvou o arquivo, recarrega no aparelho. | `com.fetin.detecaodeepi.dev` |
+| `preview` | APK autônomo, com o bundle assado dentro. É o que vai para a portaria. | `com.fetin.detecaodeepi` |
+
+Os pacotes são diferentes de propósito: os dois convivem no mesmo tablet, com
+ícones e nomes distintos. Chegar na portaria com o build que depende de um
+notebook ligado é o tipo de engano que só se descobre na hora errada.
+
+```bash
+# uma vez, para ganhar o ciclo rápido
+eas build --profile development --platform android
+
+# depois disso, a cada mudança de JavaScript
+npx expo start --dev-client        # abra o app "Detecção de EPI (dev)"
+
+# e quando for para valer
+eas build --profile preview --platform android
+```
+
+O `app.config.js` aplica a variante a partir de `APP_VARIANT`, que o perfil do
+`eas.json` define. Sem essa variável, a configuração sai idêntica ao
+`app.json` — o build de produção não sabe que a variante existe.
+
+> **Mudança nativa exige build novo.** Trocar de versão do Expo, acrescentar
+> uma biblioteca com código nativo ou mexer nos plugins do `app.json` não
+> chega pelo Metro: recompile o dev client.
 
 > A câmera **não funciona em emuladores sem câmera virtual** nem no navegador sem HTTPS. Nesses
 > casos, o app detecta a indisponibilidade e oferece a seleção pela galeria.
