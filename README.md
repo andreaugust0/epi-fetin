@@ -26,18 +26,24 @@ visão computacional na borda.
 
 | Pasta | O que é | Estado |
 |---|---|---|
-| [`servidor/`](servidor/) | API FastAPI, worker MQTT, banco e simuladores de dispositivo | Funcionando, 82 checagens |
+| [`servidor/`](servidor/) | API FastAPI, worker MQTT, banco e simuladores de dispositivo | Funcionando |
 | [`admin/`](admin/) | Painel web administrativo (React + Vite) | Funcionando |
-| `tablet/` | App do totem (React Native + Expo) | Vive em outro repositório por enquanto |
+| [`tablet/`](tablet/) | App do totem (React Native + Expo) | Funcionando, 335 testes |
+| [`raspberry/`](raspberry/) | Agente de borda: infere EPI sob demanda no Hailo-8 | Funcionando |
+| [`contrato/`](contrato/) | O catálogo de EPIs canônico e o conferidor das quatro pontas | — |
 
-O app do tablet está em
-[Bunnyzzx/Detecao-de-EPI-Fetin](https://github.com/Bunnyzzx/Detecao-de-EPI-Fetin),
-branch `mobile-rn`. Quando ele estabilizar, entra aqui preservando o
-histórico:
+O ESP32 que aciona a catraca **ainda não tem firmware neste repositório**:
+quem faz o papel dele é [`servidor/simuladores/esp32.py`](servidor/simuladores/),
+que implementa as duas travas que o firmware real precisa ter. Ao demonstrar
+o sistema, diga isso antes de perguntarem.
 
-```bash
-git subtree add --prefix=tablet https://github.com/Bunnyzzx/Detecao-de-EPI-Fetin.git mobile-rn
-```
+Dois arquivos grandes não estão versionados, de propósito, e precisam ser
+levados à mão para uma instalação nova:
+
+| O quê | Onde mora | Por quê |
+|---|---|---|
+| `.hef` do modelo de EPI | `~/epi-testes` na Raspberry | compilado para o Hailo, específico do aparelho |
+| `.env` de cada ponta | ao lado do `.env.example` | segredos e endereços de rede |
 
 ## Subindo tudo
 
@@ -65,6 +71,26 @@ cd servidor
 python -m simuladores.raspberry     # um terminal
 python -m simuladores.esp32         # outro
 ```
+
+## O catálogo de EPIs é um contrato
+
+Os sete códigos de EPI aparecem em quatro lugares — banco, painel, app e
+agente de borda — e um deles escrito diferente quebra a cadeia em silêncio:
+a Raspberry relata `capacete`, o servidor procura `capacetes`, e a
+verificação reprova alguém que estava com o equipamento.
+
+`contrato/epis.json` é o canônico, e `contrato/conferir.py` compara as
+quatro pontas contra ele lendo os arquivos como texto — sem instalar
+dependência de nenhum dos projetos, e acusando um arquivo editado à mão
+mesmo que ele continue compilando.
+
+```bash
+python3 contrato/conferir.py                       # o que estiver no disco
+python3 contrato/conferir.py --servidor http://IP:8000
+```
+
+Sai com código 1 na primeira divergência, para virar passo de CI ou gancho
+de pre-commit.
 
 ## Por que servidor e admin no mesmo repositório
 
