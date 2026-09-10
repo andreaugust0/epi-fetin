@@ -184,16 +184,63 @@ def _decodificar(dados: bytes) -> np.ndarray:
     return imagem
 
 
+#: Lado maior da imagem entregue ao YuNet. Só a DETECÇÃO usa esta redução;
+#: o recorte continua saindo da foto original, em resolução plena.
+LADO_DETECCAO_MAX = 1024
+
+
 def _detectar(imagem_bgr: np.ndarray) -> list[tuple[Caixa, float]]:
+    """Onde estão os rostos, e com que confiança.
+
+    A foto é REDUZIDA antes de ir ao detector, e isso não é economia de CPU:
+    é o que faz o YuNet funcionar. Ele foi treinado com entradas pequenas, e
+    suas âncoras cobrem rostos de algumas dezenas a algumas centenas de
+    pixels. Numa foto de celular — 3024x4032 — um rosto de perto ocupa dois
+    mil pixels de lado, muito acima do que ele sabe procurar, e a confiança
+    despenca conforme o rosto CRESCE no quadro:
+
+        rosto ocupando 25% da altura   nativo 0.90    reduzido 0.95
+        rosto ocupando 40% da altura   nativo 0.71    reduzido 0.95
+        rosto ocupando 55% da altura   nativo 0.70    reduzido 0.95
+        rosto ocupando 70% da altura   nativo 0.61    reduzido 0.94
+
+    Com `FACE_DETECCAO_MIN` em 0.7, isso produzia o pior tipo de erro: a
+    foto boa, de frente e bem iluminada, era recusada com "nenhum rosto
+    encontrado" — e a mensagem mandava a pessoa aproximar o rosto, que é
+    exatamente o que piorava. Enquanto isso um recorte distante passava. O
+    conselho na tela estava invertido porque o diagnóstico estava.
+
+    A caixa volta convertida para as coordenadas da imagem original, então
+    nada muda do quadrado em diante: o recorte tem a resolução que sempre
+    teve, e a geometria continua idêntica à do tablet.
+    """
     altura, largura = imagem_bgr.shape[:2]
+    maior = max(altura, largura)
+
+    if maior > LADO_DETECCAO_MAX:
+        fator = LADO_DETECCAO_MAX / maior
+        # INTER_AREA é o que não cria serrilhado ao reduzir. Aqui pode ser
+        # diferente do tablet sem prejuízo: isto alimenta o detector, não o
+        # FaceNet — o vetor sai do recorte original.
+        entrada = cv2.resize(
+            imagem_bgr,
+            (round(largura * fator), round(altura * fator)),
+            interpolation=cv2.INTER_AREA,
+        )
+    else:
+        fator = 1.0
+        entrada = imagem_bgr
+
+    alt_ent, larg_ent = entrada.shape[:2]
     detector = _modelos.detector()
-    detector.setInputSize((largura, altura))
-    _, cruas = detector.detect(imagem_bgr)
+    detector.setInputSize((larg_ent, alt_ent))
+    _, cruas = detector.detect(entrada)
     if cruas is None:
         return []
+
     achados = []
     for linha in cruas:
-        x, y, w, h = (float(v) for v in linha[:4])
+        x, y, w, h = (float(v) / fator for v in linha[:4])
         achados.append((Caixa(round(x), round(y), round(w), round(h)), float(linha[-1])))
     return achados
 
