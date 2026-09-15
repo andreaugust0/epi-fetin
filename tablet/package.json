@@ -74,6 +74,7 @@
     ],
     "moduleNameMapper": {
       "\\.onnx$": "<rootDir>/src/test-utils/onnxAssetMock.js",
+      "\\.wav$": "<rootDir>/src/test-utils/somAssetMock.js",
       "^@/(.*)$": "<rootDir>/src/$1"
     },
     "transformIgnorePatterns": [

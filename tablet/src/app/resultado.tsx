@@ -11,6 +11,7 @@ import { EpiChecklistGrid, EpiFigure } from '@/features/epi-detection/components
 import { useVerificationSession } from '@/features/verification-session/hooks/VerificationSessionContext';
 import { hasFreshIdentification } from '@/features/verification-session/machine/sessionMachine';
 import { useHaptics } from '@/hooks/useHaptics';
+import { useSomDoResultado } from '@/hooks/useSomDoResultado';
 import { colors, spacing } from '@/theme';
 
 export default function ResultScreen() {
@@ -20,6 +21,13 @@ export default function ResultScreen() {
 
   const { detection, employee, state } = snapshot;
   const isApproved = state === 'approved';
+
+  /*
+   * `null` enquanto não há resultado: sem isto, o hook tocaria "negado" ao
+   * abrir a tela por engano, antes de a verificação existir — e o primeiro
+   * som que a pessoa ouvisse seria o errado.
+   */
+  useSomDoResultado(detection ? isApproved : null);
 
   /** Limpa a sessão inteira e devolve o terminal para o próximo funcionário. */
   const goHome = useCallback(() => {

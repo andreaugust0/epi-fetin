@@ -21,6 +21,16 @@ jest.mock('expo-haptics', () => ({
   NotificationFeedbackType: { Success: 'success', Warning: 'warning', Error: 'error' },
 }));
 
+/**
+ * `expo-audio` toca pelo módulo nativo, que não existe no Jest. O mock devolve
+ * um tocador inerte: os testes de resultado renderizam a tela inteira, e um
+ * erro aqui derrubaria uma suíte que não tem nada a ver com som.
+ */
+jest.mock('expo-audio', () => ({
+  useAudioPlayer: () => ({ play: jest.fn(), pause: jest.fn(), seekTo: jest.fn() }),
+  setAudioModeAsync: jest.fn().mockResolvedValue(undefined),
+}));
+
 jest.mock('expo-crypto', () => ({
   randomUUID: () => `test-uuid-${Math.random().toString(36).slice(2, 10)}`,
 }));
