@@ -30,12 +30,18 @@ visão computacional na borda.
 | [`admin/`](admin/) | Painel web administrativo (React + Vite) | Funcionando |
 | [`tablet/`](tablet/) | App do totem (React Native + Expo) | Funcionando, 335 testes |
 | [`raspberry/`](raspberry/) | Agente de borda: infere EPI sob demanda no Hailo-8 | Funcionando |
+| [`esp32/`](esp32/) | Firmware da catraca: aciona o relé e reporta a passagem | Funcionando |
 | [`contrato/`](contrato/) | O catálogo de EPIs canônico e o conferidor das quatro pontas | — |
 
-O ESP32 que aciona a catraca **ainda não tem firmware neste repositório**:
-quem faz o papel dele é [`servidor/simuladores/esp32.py`](servidor/simuladores/),
-que implementa as duas travas que o firmware real precisa ter. Ao demonstrar
-o sistema, diga isso antes de perguntarem.
+O [`servidor/simuladores/esp32.py`](servidor/simuladores/) continua no
+repositório e continua útil: ele exercita o servidor inteiro sem hardware na
+mesa, e a flag `--sem-protecao` desliga a idempotência e a checagem de prazo
+para mostrar o que acontece sem elas.
+
+Uma coisa a dizer antes de perguntarem, ao demonstrar: **o firmware não sabe
+se a pessoa passou.** Sem sensor de giro, ele afirma apenas que a janela abriu
+e fechou — reporta `LIBERADO` e `TIMEOUT_SEM_PASSAGEM`, nunca `PASSOU`.
+Liberar não é o mesmo que passar, e o painel distingue os dois.
 
 Dois arquivos grandes não estão versionados, de propósito, e precisam ser
 levados à mão para uma instalação nova:

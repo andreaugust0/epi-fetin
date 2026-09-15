@@ -10,6 +10,12 @@ mosquitto/config/passwd
 mosquitto/config/acl
 mosquitto/config/certs/
 
+# ------------------------------------------------------------------ esp32
+# Build do PlatformIO e a configuracao local da placa — o config.h guarda a
+# senha do Wi-Fi. O config.exemplo.h e que vai para o repositorio.
+esp32/.pio/
+esp32/src/config.h
+
 # ---------------------------------------------------------------- python
 .venv/
 venv/
