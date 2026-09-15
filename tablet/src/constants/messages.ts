@@ -120,9 +120,6 @@ export const APP_MESSAGES = {
     positionDetail:
       'Permaneça na posição indicada e certifique-se de que todo o corpo esteja visível para a câmera.',
     startButton: 'Iniciar Verificação de EPI',
-    countdownTitle: 'Posicione-se na marcação',
-    countdownDetail: 'A verificação começa automaticamente ao fim da contagem.',
-    countdownCancel: 'Cancelar',
     exitButton: 'Sair',
     exitHint: 'Voltar ao início',
     missingEmployeeTitle: 'Nenhum funcionário identificado',

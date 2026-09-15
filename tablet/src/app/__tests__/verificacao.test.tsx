@@ -5,10 +5,26 @@ import { setEpiVerificationService } from '@/features/epi-detection/services/epi
 import { MockEpiVerificationService } from '@/features/epi-detection/services/MockEpiVerificationService';
 import { setFaceRecognitionService } from '@/features/face-recognition/services/faceRecognitionServiceFactory';
 import { MockFaceRecognitionService } from '@/features/face-recognition/services/MockFaceRecognitionService';
+import { setEsperaPosicionamentoMs } from '@/features/verification-session/posicionamento';
 import { IdentifyAs, pressAndSettle, renderScreen } from '@/test-utils/renderScreen';
 
 import PreparationScreen from '../preparacao';
 import VerificationScreen from '../verificacao';
+
+/*
+ * A espera de posicionamento vale cinco segundos em campo — o tempo de a
+ * pessoa chegar na marcação do chão. Aqui ela vai a zero: esperar de verdade
+ * estouraria o limite do `waitFor` em todo teste do fluxo, e aumentar esse
+ * limite deixaria a suíte lenta para medir uma pausa que não é o objeto de
+ * nenhum destes testes.
+ */
+beforeEach(() => {
+  setEsperaPosicionamentoMs(0);
+});
+
+afterEach(() => {
+  setEsperaPosicionamentoMs(null);
+});
 
 const mockReplace = jest.fn();
 
@@ -56,6 +72,29 @@ describe('tela de verificação de EPI', () => {
     const { getByText } = await renderScreen(<VerificationScreen />);
 
     expect(getByText(APP_MESSAGES.preparation.missingEmployeeTitle)).toBeTruthy();
+  });
+
+  /**
+   * A espera de posicionamento, guardada como comportamento e não como número.
+   *
+   * Ela existe porque a marcação do chão fica a alguns passos do tablet: sem a
+   * pausa, a captura saía com a pessoa ainda debruçada sobre a tela e a borda
+   * reprovava quem estava com todos os equipamentos. O sintoma seria uma
+   * reprovação injusta e intermitente — o tipo de defeito que se atribui ao
+   * modelo, e não ao tempo.
+   *
+   * O que se observa de fora é a instrução no lugar do nome: enquanto a pessoa
+   * está a caminho, a tela pede que ela fique parada na marcação.
+   */
+  it('espera a pessoa se posicionar antes de capturar', async () => {
+    setEsperaPosicionamentoMs(200);
+    const { getByText, queryByText } = await renderThroughFlow('conformidade-total');
+
+    expect(getByText(APP_MESSAGES.scan.epiDetectingHint)).toBeTruthy();
+
+    await waitFor(() => expect(queryByText(APP_MESSAGES.scan.epiDetectingHint)).toBeNull(), {
+      timeout: 3000,
+    });
   });
 
   it('inicia a análise automaticamente, sem exigir novo toque', async () => {

@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { ScanFrame } from '@/components/camera';
@@ -14,6 +14,7 @@ import {
   hasFreshIdentification,
   hasIdentifiedEmployee,
 } from '@/features/verification-session/machine/sessionMachine';
+import { esperaPosicionamentoMs } from '@/features/verification-session/posicionamento';
 import { colors, radii, spacing } from '@/theme';
 
 export default function VerificationScreen() {
@@ -24,6 +25,15 @@ export default function VerificationScreen() {
   const { state, employee, progress, items } = snapshot;
   const isDetecting = state === 'epi_detecting';
   const isIdentified = hasIdentifiedEmployee(snapshot);
+
+  /**
+   * Verdadeiro durante a espera de posicionamento, antes de a captura sair.
+   *
+   * A tela não muda de aparência quando ele vira falso: a linha continua
+   * varrendo, o boneco continua aceso, o texto continua o mesmo. Para quem
+   * está na marcação, os dois momentos são um só — e é essa a intenção.
+   */
+  const [posicionando, setPosicionando] = useState(true);
 
   /** Impede que uma segunda execução comece por remontagem ou duplo toque. */
   const hasStartedRef = useRef(false);
@@ -56,7 +66,16 @@ export default function VerificationScreen() {
       return;
     }
     hasStartedRef.current = true;
-    void runVerification();
+
+    const relogio = setTimeout(() => {
+      setPosicionando(false);
+      void runVerification();
+    }, esperaPosicionamentoMs());
+
+    // Sair da tela antes do disparo — cancelando, ou porque a identificação
+    // expirou — deixaria um timer pendente chamando `startEpiVerification`
+    // numa sessão já encerrada.
+    return () => clearTimeout(relogio);
   }, [isIdentified, requiredEpis.length, router, runVerification, state]);
 
   useEffect(() => cancel, [cancel]);
@@ -170,22 +189,35 @@ export default function VerificationScreen() {
           e que um retrato dela mesma nunca deu.
         */}
         <View style={styles.viewport}>
+          {/*
+            `posicionando || isDetecting` em vez de só `isDetecting`: a linha
+            precisa varrer desde o instante em que a tela abre. Ligada apenas
+            na detecção, ela ficaria parada durante a espera — cinco segundos
+            de tela morta bem quando a pessoa está andando de costas e quer
+            saber se o sistema está vivo.
+          */}
           <EpiFigure
             items={items}
-            analyzing={isDetecting}
+            analyzing={posicionando || isDetecting}
             tone="dark"
             backgroundColor={colors.scanner.viewport}
             style={styles.figura}
           />
-          <ScanFrame active={isDetecting} />
+          <ScanFrame active={posicionando || isDetecting} />
         </View>
 
         <View style={styles.panel}>
           <Text variant="heading" color={colors.white} align="center">
             {APP_MESSAGES.scan.epiDetecting}
           </Text>
+          {/*
+            Durante a espera, a instrução vale mais que o nome: quem está
+            andando para a marcação precisa saber que deve ficar parado lá. O
+            nome volta quando a captura já saiu e não há mais nada a fazer
+            além de esperar.
+          */}
           <Text variant="caption" color={colors.slate[400]} align="center">
-            {employee ? employee.nome : APP_MESSAGES.scan.epiDetectingHint}
+            {posicionando || !employee ? APP_MESSAGES.scan.epiDetectingHint : employee.nome}
           </Text>
 
           <View style={styles.progressBlock}>
