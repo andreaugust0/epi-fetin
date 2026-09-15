@@ -19,6 +19,23 @@ jest.mock('expo-router', () => ({
 
 jest.mock('@/features/face-recognition/services/faceApiConfig', () => ({
   isFaceApiConfigured: jest.fn(),
+  /*
+   * `resolveFaceApiConfig` precisa existir aqui, e a razão merece registro:
+   * a lista de EPIs exigidos passou a perguntar ao servidor, e é por esta
+   * função que ela descobre se há servidor a quem perguntar. Mockar o módulo
+   * só com `isFaceApiConfigured` a deixava `undefined`, a consulta falhava, e
+   * a tela inicial trocava a grade pelo estado de erro — levando junto o
+   * aviso de modo simulado, que é o que estes testes observam.
+   *
+   * Sem provisionamento, como aqui: a consulta ao servidor nem sai, e a lista
+   * vem do armazenamento local.
+   */
+  resolveFaceApiConfig: jest.fn().mockResolvedValue({
+    baseUrl: null,
+    baseUrlSource: null,
+    pointId: null,
+    pointIdSource: null,
+  }),
 }));
 
 const configurado = isFaceApiConfigured as jest.MockedFunction<typeof isFaceApiConfigured>;

@@ -31,6 +31,14 @@ const mockReplace = jest.fn();
 
 jest.mock('expo-router', () => ({
   useRouter: () => ({ replace: mockReplace, push: jest.fn(), back: jest.fn() }),
+  // `useFocusEffect` roda o efeito quando a tela ganha foco. No teste não há
+  // navegador, então ele se comporta como um efeito comum — que é exatamente
+  // o caso "a tela acabou de abrir". Sem isto, a lista de EPIs exigidos, que
+  // recarrega a cada foco, derruba qualquer tela que a use.
+  useFocusEffect: (efeito: () => void | (() => void)) => {
+    const { useEffect } = jest.requireActual<typeof import('react')>('react');
+    useEffect(efeito, [efeito]);
+  },
 }));
 
 const EMPLOYEE_NAME = 'Caio de Castro Yarouhas';
