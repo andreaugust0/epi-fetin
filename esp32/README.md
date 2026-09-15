@@ -68,6 +68,27 @@ própria partida. Os do ADC2 (4, 12–15, 25–27) não podem ser lidos como
 analógicos com o Wi-Fi ligado, mas como **saída digital** funcionam sem
 restrição — que é o nosso caso.
 
+## Testar sem o sistema inteiro
+
+Grave o firmware, suba só um broker e exercite a placa na mesa:
+
+```bash
+# um broker anônimo, descartável
+docker run --rm -p 1883:1883 eclipse-mosquitto:2 mosquitto -c /mosquitto-no-auth.conf
+
+# noutro terminal
+pip install paho-mqtt
+python testar_catraca.py --host SEU_IP
+```
+
+O script publica um `cmd/liberar` à mão e imprime o que a placa responde. As
+duas travas têm demonstração pronta:
+
+```bash
+python testar_catraca.py --host SEU_IP --repetir   # mesma mensagem 2x: abre UMA
+python testar_catraca.py --host SEU_IP --vencido   # comando expirado: NÃO abre
+```
+
 ---
 
 ## As duas travas
