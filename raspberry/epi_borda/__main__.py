@@ -43,8 +43,16 @@ def abrir_camera(fonte: str, largura: int, altura: int):
             # A picamera2 entrega RGB; invertemos para BGR e o resto do
             # código não precisa saber de onde veio o frame.
             return lambda: cam.capture_array()[:, :, ::-1], cam.stop
-        except ImportError:
-            log.warning("picamera2 indisponível; tentando OpenCV")
+        except Exception as erro:
+            # `ImportError` sozinho não bastava, e o caso que ele deixava
+            # passar é o mais comum: numa Pi 5, a picamera2 vem instalada com
+            # o sistema. O módulo importa sem reclamar, e quem levanta é o
+            # `Picamera2()`, procurando uma câmera CSI que não está ligada —
+            # porque a câmera é USB. Essa exceção subia até o topo e derrubava
+            # o serviço, que reiniciava em ciclo, com a webcam ali ao lado
+            # funcionando perfeitamente. O log dizia "no cameras available" e
+            # parecia defeito de hardware.
+            log.warning("picamera2 não abriu (%s); tentando OpenCV", erro)
             fonte = "0"
 
     import cv2

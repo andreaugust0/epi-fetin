@@ -1,5 +1,38 @@
-# Copie para /etc/systemd/system/epi-borda.service e ajuste User e
-# WorkingDirectory. Depois:
+# Copie para /etc/systemd/system/epi-borda.service e ajuste TRÊS coisas antes
+# de habilitar. Cada uma delas já custou uma tarde a alguém.
+#
+# 1. `User` e `WorkingDirectory` — o usuário e o caminho desta instalação. O
+#    padrão abaixo assume `pi` e `/home/pi`, que é o que o Imager sugere, mas
+#    raramente é o que fica.
+#
+# 2. O Python do `ExecStart`. Se as dependências foram instaladas num ambiente
+#    virtual — o caminho normal no Raspberry Pi OS atual, que recusa
+#    `pip install` no Python do sistema — o `ExecStart` precisa apontar para o
+#    interpretador DE DENTRO do ambiente:
+#
+#        /home/SEU_USUARIO/epi-env/bin/python
+#
+#    Ativar o ambiente no seu shell não muda nada aqui. O systemd não lê o seu
+#    `.bashrc`: ele executa o caminho que está escrito. Com `/usr/bin/python3`
+#    o serviço sobe sem nenhuma das bibliotecas e morre em `ModuleNotFoundError`
+#    uma de cada vez — paho, depois onnxruntime, depois cv2 — dando a impressão
+#    de que falta instalar coisa, quando já está tudo instalado no lugar certo.
+#
+# 3. O detector. São dois entrypoints DIFERENTES, não um com opções:
+#
+#        -m epi_borda --fonte 0             ONNX na CPU; lê MODELO do .env
+#        -m detectores.hailo MODELO.hef     Hailo-8; o .hef é argumento
+#
+#    Com Hailo-8 instalado, é o segundo. O primeiro vai procurar um
+#    `modelos/epi.onnx` que este repositório não versiona, e falhar com
+#    `NO_SUCHFILE` — que parece problema de caminho e é, na verdade, o
+#    entrypoint errado.
+#
+#    `--camera 0` (ou `--fonte 0`) manda usar `/dev/video0`, a webcam USB. Sem
+#    isso o `epi_borda` tenta a picamera2 primeiro, que é o certo para câmera
+#    de cabo flat e perda de tempo para webcam.
+#
+# Depois:
 #   sudo systemctl daemon-reload
 #   sudo systemctl enable --now epi-borda
 #   journalctl -u epi-borda -f
@@ -16,7 +49,13 @@ Wants=network-online.target
 Type=simple
 User=pi
 WorkingDirectory=/home/pi/epi-fetin/raspberry
-ExecStart=/usr/bin/python3 -m epi_borda
+
+# Hailo-8 + webcam USB. Ajuste o caminho do ambiente e o do .hef.
+ExecStart=/home/pi/epi-env/bin/python -m detectores.hailo /home/pi/epi-testes/modelo_epi.hef --camera 0
+
+# Sem Hailo, inferindo na CPU, troque a linha acima por esta:
+# ExecStart=/home/pi/epi-env/bin/python -m epi_borda --fonte 0 --largura 1280 --altura 720
+
 Environment=PYTHONUNBUFFERED=1
 
 # A catraca é fail-secure: uma borda em looping de reinício deixa a

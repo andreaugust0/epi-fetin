@@ -38,6 +38,13 @@ miniodata/
 *.sqlite
 *.db
 
+# Dump do banco. Carrega nome, setor, consentimento e o VETOR BIOMÉTRICO de
+# cada pessoa — é o arquivo mais sensível que este projeto produz, e o que
+# mais parece inofensivo por ser texto. Nenhum `.sql` é versionado aqui, então
+# a regra larga não esconde nada de útil.
+servidor/backups/
+*.sql
+
 # ---------------------------------------------------------------- editor
 .vscode/
 .idea/
