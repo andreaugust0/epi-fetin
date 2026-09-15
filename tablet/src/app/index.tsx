@@ -4,7 +4,7 @@ import { useCallback, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { EmptyState, ErrorState, InlineNotice, LoadingState } from '@/components/feedback';
-import { Screen, StepIndicator } from '@/components/layout';
+import { Screen, SeloDoTerminal, StepIndicator } from '@/components/layout';
 import { Button, Text } from '@/components/ui';
 import { APP_MESSAGES } from '@/constants/messages';
 import { EpiGrid } from '@/features/epi-detection/components';
@@ -164,6 +164,7 @@ export default function HomeScreen() {
         )}
       </View>
 
+      <SeloDoTerminal />
       <StepIndicator currentStep="start" />
     </Screen>
   );

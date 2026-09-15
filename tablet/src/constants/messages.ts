@@ -113,6 +113,13 @@ export const APP_MESSAGES = {
     confidenceLabel: 'Confiança',
   },
 
+  terminal: {
+    checking: 'Verificando servidor',
+    online: 'Servidor conectado',
+    offline: 'Servidor sem resposta',
+    unprovisioned: 'Sem provisionamento',
+  },
+
   preparation: {
     title: 'Funcionário identificado',
     positionInstruction:
