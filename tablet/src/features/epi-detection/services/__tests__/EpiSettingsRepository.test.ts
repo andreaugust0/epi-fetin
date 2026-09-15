@@ -31,11 +31,20 @@ describe('epiSettingsRepository', () => {
     await expect(epiSettingsRepository.getRequiredEpis()).resolves.toEqual(['capacete']);
   });
 
-  it('volta ao padrão quando a lista salva fica vazia', async () => {
+  /**
+   * Este teste já afirmou o contrário, e fixava um defeito.
+   *
+   * Voltar ao padrão diante de uma lista vazia GRAVADA invertia a intenção de
+   * quem a gravou: tirar todas as exigências no painel fazia o terminal passar
+   * a exigir os sete equipamentos. Quem quis liberar a passagem obteve o
+   * oposto, e nada na tela explicava por quê.
+   *
+   * Vazio é uma resposta. Ausência de resposta é o caso do teste acima, em que
+   * não há nada gravado — e aí exigir tudo é o lado seguro de errar.
+   */
+  it('respeita a lista vazia salva', async () => {
     await AsyncStorage.setItem(STORAGE_KEYS.requiredEpis, JSON.stringify([]));
 
-    await expect(epiSettingsRepository.getRequiredEpis()).resolves.toEqual([
-      ...DEFAULT_REQUIRED_EPI_IDS,
-    ]);
+    await expect(epiSettingsRepository.getRequiredEpis()).resolves.toEqual([]);
   });
 });

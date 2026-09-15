@@ -167,7 +167,15 @@ export const useAutoFaceRecognition = ({
 
     void (async () => {
       try {
-        const foto = await camera.takePictureAsync({ skipProcessing: true, quality: 1 });
+        // `shutterSound: false` pelo mesmo motivo do `animateShutter` no
+        // visor: o clique de obturador anuncia uma fotografia, e o que
+        // acontece aqui é medição. A imagem vira vetor e é descartada; nada
+        // é gravado, nem no aparelho nem no servidor.
+        const foto = await camera.takePictureAsync({
+          skipProcessing: true,
+          quality: 1,
+          shutterSound: false,
+        });
         if (!mountedRef.current) return;
         if (!foto?.uri) {
           throw new Error('A câmera não devolveu imagem.');

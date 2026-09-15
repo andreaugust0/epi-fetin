@@ -57,6 +57,9 @@ export const APP_MESSAGES = {
     cancelledDescription: 'A verificação foi cancelada antes de terminar.',
     errorTitle: 'Falha na verificação',
     errorDescription: 'Não foi possível concluir a verificação. Tente novamente.',
+    noPolicyTitle: 'Ponto sem equipamentos configurados',
+    noPolicyDescription:
+      'Nenhum equipamento está definido para este ponto de acesso. Procure o responsável administrativo para configurar a exigência no painel.',
     retryButton: 'Tentar novamente',
   },
 
@@ -117,6 +120,9 @@ export const APP_MESSAGES = {
     positionDetail:
       'Permaneça na posição indicada e certifique-se de que todo o corpo esteja visível para a câmera.',
     startButton: 'Iniciar Verificação de EPI',
+    countdownTitle: 'Posicione-se na marcação',
+    countdownDetail: 'A verificação começa automaticamente ao fim da contagem.',
+    countdownCancel: 'Cancelar',
     exitButton: 'Sair',
     exitHint: 'Voltar ao início',
     missingEmployeeTitle: 'Nenhum funcionário identificado',

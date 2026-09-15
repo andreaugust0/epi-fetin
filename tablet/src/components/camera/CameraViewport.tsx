@@ -62,7 +62,20 @@ export const CameraViewport = forwardRef<CameraView, CameraViewportProps>(
     return (
       <View testID="camera-viewport" style={[styles.viewport, style]}>
         {showCamera ? (
-          <CameraView ref={ref} style={StyleSheet.absoluteFill} facing="front" />
+          <CameraView
+            ref={ref}
+            style={StyleSheet.absoluteFill}
+            facing="front"
+            /*
+             * `animateShutter` vem ligado por padrão e é o clarão que aparece
+             * ao disparar `takePictureAsync`. Num aplicativo de câmera ele diz
+             * "foto tirada"; aqui ele mente. O funcionário não está tirando
+             * foto: está sendo reconhecido, e nenhuma imagem é guardada. O
+             * efeito sugere um registro fotográfico que não existe, bem no
+             * ponto do fluxo em que a promessa de privacidade mais importa.
+             */
+            animateShutter={false}
+          />
         ) : (
           <View style={[StyleSheet.absoluteFill, styles.placeholder]}>
             <MaterialCommunityIcons name="account-outline" size={120} color={colors.overlayBorder} />

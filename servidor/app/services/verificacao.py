@@ -100,7 +100,18 @@ async def abrir(
 
     exigidos = await epis_exigidos(db, ponto_id)
     if not exigidos:
-        raise ErroVerificacao("ponto sem EPIs configurados")
+        # A mensagem vai para a tela do tablet, e quem a lê está numa portaria
+        # sem saber o que fazer. "ponto sem EPIs configurados" descreve o
+        # estado e não diz a quem recorrer; esta diz.
+        #
+        # E note que o caminho é recusar, não liberar. Um ponto sem exigência
+        # quase nunca significa "aqui não precisa de equipamento" — significa
+        # configuração que faltou, e abrir a catraca por omissão transforma um
+        # erro de cadastro em passagem franca.
+        raise ErroVerificacao(
+            "Este ponto de acesso não tem EPIs configurados. "
+            "Defina a exigência no painel administrativo."
+        )
 
     agora = datetime.now(timezone.utc)
     verif = Verificacao(

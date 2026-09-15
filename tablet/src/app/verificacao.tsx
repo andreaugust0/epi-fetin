@@ -110,6 +110,33 @@ export default function VerificationScreen() {
   }
 
   const renderBody = () => {
+    /*
+     * Ponto sem nenhum EPI exigido: diga isso, não fique girando.
+     *
+     * O efeito antigo era o pior possível na portaria — remover todas as
+     * exigências no painel deixava o terminal parado nesta tela para sempre,
+     * porque o disparo automático é guardado por `requiredEpis.length > 0` e
+     * nada mais acontecia. Nenhuma mensagem, nenhum caminho de volta.
+     *
+     * E liberar por padrão também não serve, por mais que pareça o oposto
+     * simétrico: um ponto sem EPIs configurados quase nunca é "aqui não
+     * precisa de equipamento", e quase sempre é configuração que faltou. O
+     * servidor recusa pelo mesmo motivo. A saída é tornar o erro visível para
+     * quem pode corrigi-lo, em vez de escondê-lo atrás de uma catraca aberta.
+     */
+    if (requiredEpis.length === 0) {
+      return (
+        <StateView
+          icon="cog-off-outline"
+          title={APP_MESSAGES.scan.noPolicyTitle}
+          description={APP_MESSAGES.scan.noPolicyDescription}
+          tone="warning"
+          appearance="dark"
+          actions={[{ label: APP_MESSAGES.face.backHomeButton, onPress: goHome, icon: 'home' }]}
+        />
+      );
+    }
+
     if (isFailure) {
       const isError = state === 'error';
       return (

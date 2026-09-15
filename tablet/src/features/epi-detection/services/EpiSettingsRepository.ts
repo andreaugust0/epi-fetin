@@ -20,8 +20,18 @@ export const epiSettingsRepository: EpiSettingsRepository = {
       return [...DEFAULT_REQUIRED_EPI_IDS];
     }
 
-    const valid = stored.filter((item): item is EpiId => typeof item === 'string' && isEpiId(item));
-    return valid.length > 0 ? valid : [...DEFAULT_REQUIRED_EPI_IDS];
+    /*
+     * Lista vazia GRAVADA é uma resposta, não ausência de resposta.
+     *
+     * Antes, uma lista vazia caía no padrão de sete equipamentos, e o efeito
+     * era absurdo: tirar todas as exigências no painel fazia o tablet passar a
+     * exigir tudo. Quem quis liberar a passagem obteve o oposto.
+     *
+     * O padrão continua valendo quando NÃO HÁ nada gravado (`stored` não é
+     * array) — aí sim é ausência de configuração, e exigir tudo é o lado
+     * seguro de errar.
+     */
+    return stored.filter((item): item is EpiId => typeof item === 'string' && isEpiId(item));
   },
 
   async setRequiredEpis(ids) {
