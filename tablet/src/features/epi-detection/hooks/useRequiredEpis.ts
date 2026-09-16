@@ -7,6 +7,18 @@ import { epiSettingsRepository } from '../services/EpiSettingsRepository';
 import { buscarEpisExigidos } from '../services/PoliticaPontoService';
 import type { EpiId } from '../types';
 
+/**
+ * Mesma lista, mesmos itens, mesma ordem.
+ *
+ * Serve para devolver a REFERÊNCIA ANTERIOR quando o conteúdo não mudou. A
+ * recarga por foco produz um array novo a cada entrada de tela, e um array
+ * novo com o mesmo conteúdo invalida todo `useCallback` e `useEffect` que
+ * dependa dele — inclusive o que agenda a captura na tela de verificação.
+ * Conteúdo igual não deve acordar ninguém.
+ */
+const mesmaLista = (a: EpiId[], b: EpiId[]): boolean =>
+  a.length === b.length && a.every((item, i) => item === b[i]);
+
 export interface UseRequiredEpisResult {
   requiredEpis: EpiId[];
   loading: boolean;
@@ -91,7 +103,8 @@ export const useRequiredEpis = (): UseRequiredEpisResult => {
     }
 
     if (!vivoRef.current) return;
-    setEpis(lista);
+    const nova = lista;
+    setEpis((atual) => (mesmaLista(atual, nova) ? atual : nova));
     /*
      * Só a FALHA conta como "sem confirmação".
      *

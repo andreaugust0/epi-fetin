@@ -1,4 +1,4 @@
-import { waitFor } from '@testing-library/react-native';
+import { act, waitFor } from '@testing-library/react-native';
 
 import { APP_MESSAGES } from '@/constants/messages';
 import { setEpiVerificationService } from '@/features/epi-detection/services/epiVerificationServiceFactory';
@@ -102,6 +102,40 @@ describe('tela de verificação de EPI', () => {
 
     await waitFor(() => expect(queryByText(APP_MESSAGES.scan.epiDetectingHint)).toBeNull(), {
       timeout: 3000,
+    });
+  });
+
+  /**
+   * A captura não pode se perder se a tela re-renderizar durante a espera.
+   *
+   * Foi assim que ela se perdia: o efeito que agenda o disparo dependia de
+   * `runVerification`, que muda de identidade quando `requiredEpis` muda de
+   * identidade. Entrar nesta tela recarrega a lista do servidor, a resposta
+   * chega no meio dos cinco segundos, o efeito reexecutava, a limpeza
+   * CANCELAVA o temporizador — e a nova execução caía no `return` do
+   * `hasStartedRef`, que já estava marcado. A tela varria para sempre e nada
+   * era capturado.
+   *
+   * Este teste força o re-render no meio da espera, que é o que a suíte antiga
+   * nunca fazia: nela as telas convivem na mesma árvore e a lista já está
+   * carregada antes do toque. No tablet, esta tela monta do zero.
+   */
+  it('nao perde a captura se a tela re-renderizar durante a espera', async () => {
+    setEsperaPosicionamentoMs(300);
+    const view = await renderThroughFlow('conformidade-total');
+
+    await act(async () => {
+      await view.showScreen(
+        <>
+          <IdentifyAs />
+          <PreparationScreen />
+          <VerificationScreen />
+        </>,
+      );
+    });
+
+    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/resultado'), {
+      timeout: 4000,
     });
   });
 

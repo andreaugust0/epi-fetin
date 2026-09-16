@@ -46,6 +46,40 @@ export default function VerificationScreen() {
   }, [requiredEpis, router, startEpiVerification]);
 
   /**
+   * O relógio da espera vive numa ref, e não dentro do efeito — esta é a
+   * correção de um travamento que só aparecia no aparelho.
+   *
+   * O efeito abaixo dependia de `runVerification`, que muda de identidade
+   * sempre que `requiredEpis` muda de identidade. E a lista é recarregada a
+   * cada foco de tela: entrar aqui dispara a consulta ao servidor, a resposta
+   * chega durante os cinco segundos de espera e troca o array. O efeito
+   * reexecutava, a limpeza CANCELAVA o temporizador, e a nova execução caía no
+   * `return` do `hasStartedRef` — que já estava marcado. A captura nunca saía,
+   * e a tela varria para sempre.
+   *
+   * A suíte não pegava porque lá as telas convivem na mesma árvore e a lista
+   * já está carregada antes do toque. No tablet, esta tela monta do zero.
+   */
+  const relogioRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  /** A versão mais recente de `runVerification`, fora das dependências. */
+  const runRef = useRef(runVerification);
+  useEffect(() => {
+    runRef.current = runVerification;
+  }, [runVerification]);
+
+  // Limpeza só no desmonte. Sair da tela antes do disparo deixaria um
+  // `setTimeout` chamando `startEpiVerification` numa sessão encerrada.
+  useEffect(
+    () => () => {
+      if (relogioRef.current) {
+        clearTimeout(relogioRef.current);
+      }
+    },
+    [],
+  );
+
+  /**
    * A análise começa sozinha ao entrar: o funcionário já tocou em "Iniciar
    * Verificação de EPI" na tela anterior e agora está na marcação do chão.
    *
@@ -67,16 +101,12 @@ export default function VerificationScreen() {
     }
     hasStartedRef.current = true;
 
-    const relogio = setTimeout(() => {
+    relogioRef.current = setTimeout(() => {
       setPosicionando(false);
-      void runVerification();
+      void runRef.current();
     }, esperaPosicionamentoMs());
-
-    // Sair da tela antes do disparo — cancelando, ou porque a identificação
-    // expirou — deixaria um timer pendente chamando `startEpiVerification`
-    // numa sessão já encerrada.
-    return () => clearTimeout(relogio);
-  }, [isIdentified, requiredEpis.length, router, runVerification, state]);
+    // Sem limpeza aqui de propósito: ver o comentário do `relogioRef`.
+  }, [isIdentified, requiredEpis.length, router, state]);
 
   useEffect(() => cancel, [cancel]);
 
