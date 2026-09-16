@@ -101,10 +101,11 @@ export default function ProvisionamentoTabletScreen() {
    * render e não precisa de efeito nenhum. Isto é entrada de dado que só
    * existe fora do React.
    */
-  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => {
+    /* eslint-disable react-hooks/set-state-in-effect -- leitura assíncrona; ver acima */
     void refreshTokenStatus();
     void refreshConfigStatus();
+    /* eslint-enable react-hooks/set-state-in-effect */
   }, [refreshTokenStatus, refreshConfigStatus]);
 
   const handleSaveToken = useCallback(async () => {
