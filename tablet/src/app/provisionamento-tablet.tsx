@@ -88,25 +88,46 @@ export default function ProvisionamentoTabletScreen() {
     setPointIdInput(status.pointId !== null ? String(status.pointId) : '');
   }, []);
 
-  /*
-   * Leitura inicial do estado guardado, uma vez na montagem.
+  /**
+   * Leitura inicial do que está guardado no aparelho, uma vez na montagem.
    *
-   * O `react-hooks/set-state-in-effect` acusa este bloco, e a regra está certa
-   * no geral: `setState` síncrono dentro de efeito encadeia renderizações à
-   * toa. Não é o caso aqui — as duas funções são assíncronas e leem de
-   * SecureStore e AsyncStorage, então o estado só muda depois que a leitura
-   * volta, num microtask posterior ao render.
+   * As duas leituras acontecem EM PARALELO e o estado é aplicado num ponto só,
+   * dentro do callback assíncrono. Antes eram duas chamadas soltas no corpo do
+   * efeito, e a diferença não é de estilo:
    *
-   * O alvo certo da regra seria um estado derivado, que se calcula durante o
-   * render e não precisa de efeito nenhum. Isto é entrada de dado que só
-   * existe fora do React.
+   * - o SecureStore e o AsyncStorage respondem em tempos diferentes, então a
+   *   tela montava em dois solavancos, com o token já resolvido e a URL ainda
+   *   em branco;
+   *
+   * - não havia guarda de montagem. Fechar a tela durante a leitura — e ela é
+   *   alcançada por toque longo, então sair rápido é comum — deixava um
+   *   `setState` chegando depois do desmonte;
+   *
+   * - e era o que o `react-hooks/set-state-in-effect` acusava, com razão. A
+   *   regra pede exatamente isto: efeito que assina uma fonte externa e aplica
+   *   o resultado num callback, em vez de disparar estado direto no corpo.
    */
   useEffect(() => {
-    /* eslint-disable react-hooks/set-state-in-effect -- leitura assíncrona; ver acima */
-    void refreshTokenStatus();
-    void refreshConfigStatus();
-    /* eslint-enable react-hooks/set-state-in-effect */
-  }, [refreshTokenStatus, refreshConfigStatus]);
+    let vivo = true;
+
+    void (async () => {
+      const [token, config] = await Promise.all([
+        deviceTokenStore.get(),
+        resolveFaceApiConfig(),
+      ]);
+      if (!vivo) {
+        return;
+      }
+      setTokenStatus(token ? 'provisionado' : 'nao_provisionado');
+      setConfigStatus(config);
+      setUrlInput(config.baseUrl ?? '');
+      setPointIdInput(config.pointId !== null ? String(config.pointId) : '');
+    })();
+
+    return () => {
+      vivo = false;
+    };
+  }, []);
 
   const handleSaveToken = useCallback(async () => {
     const trimmed = tokenInput.trim();
