@@ -1,9 +1,8 @@
 import { setAudioModeAsync, useAudioPlayer } from 'expo-audio';
 import { useEffect, useRef } from 'react';
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports
+ 
 const APROVADO = require('../../assets/sons/aprovado.wav');
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const NEGADO = require('../../assets/sons/negado.wav');
 
 /**

@@ -1,10 +1,3 @@
-jest.mock('@/services/env', () => ({
-  env: {
-    faceApiUrl: undefined as string | undefined,
-    facePointIdRaw: undefined as string | undefined,
-  },
-}));
-
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { env } from '@/services/env';
@@ -19,6 +12,13 @@ import {
   resolveFaceApiConfig,
 } from '../faceApiConfig';
 import { faceApiOverrideStore } from '../faceApiOverrideStore';
+
+jest.mock('@/services/env', () => ({
+  env: {
+    faceApiUrl: undefined as string | undefined,
+    facePointIdRaw: undefined as string | undefined,
+  },
+}));
 
 interface MutableFaceEnv {
   faceApiUrl: string | undefined;

@@ -1,9 +1,9 @@
-import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 
+import ProvisionamentoTabletScreen from '@/app/provisionamento-tablet';
 import { deviceTokenStore } from '@/features/face-recognition/services/deviceTokenStore';
 import { faceApiOverrideStore } from '@/features/face-recognition/services/faceApiOverrideStore';
-import ProvisionamentoTabletScreen from '@/app/provisionamento-tablet';
 
 jest.mock('expo-router', () => ({
   useRouter: () => ({ back: jest.fn() }),

@@ -1,12 +1,12 @@
 import type { CameraView } from 'expo-camera';
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
 
+import { FaceNetSession } from '../onnx/FaceNetSession';
 import { ApiFaceRecognitionService } from '../services/ApiFaceRecognitionService';
 import { deviceTokenStore } from '../services/deviceTokenStore';
 import { FaceApiConfigError, getFaceApiConfig } from '../services/faceApiConfig';
 import type { FaceIdentificationResponse } from '../types/identification';
 
-import { FaceNetSession } from '../onnx/FaceNetSession';
 
 import { FaceDetector } from './faceDetector';
 import { extractFaceEmbedding } from './facePipeline';

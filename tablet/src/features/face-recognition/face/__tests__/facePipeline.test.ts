@@ -1,8 +1,8 @@
 import type { GalleryEntry } from '../../gallery/matchEmbedding';
+import type { FaceNetSession } from '../../onnx/FaceNetSession';
 import type { FaceDetector, DetectedFace } from '../faceDetector';
 import { analyzePhoto, extractFaceEmbedding } from '../facePipeline';
 
-import type { FaceNetSession } from '../../onnx/FaceNetSession';
 
 interface FakeRenderResult {
   saveAsync: () => Promise<{ width: number; height: number; base64: string }>;
