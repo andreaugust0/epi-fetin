@@ -88,6 +88,20 @@ export default function ProvisionamentoTabletScreen() {
     setPointIdInput(status.pointId !== null ? String(status.pointId) : '');
   }, []);
 
+  /*
+   * Leitura inicial do estado guardado, uma vez na montagem.
+   *
+   * O `react-hooks/set-state-in-effect` acusa este bloco, e a regra está certa
+   * no geral: `setState` síncrono dentro de efeito encadeia renderizações à
+   * toa. Não é o caso aqui — as duas funções são assíncronas e leem de
+   * SecureStore e AsyncStorage, então o estado só muda depois que a leitura
+   * volta, num microtask posterior ao render.
+   *
+   * O alvo certo da regra seria um estado derivado, que se calcula durante o
+   * render e não precisa de efeito nenhum. Isto é entrada de dado que só
+   * existe fora do React.
+   */
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => {
     void refreshTokenStatus();
     void refreshConfigStatus();

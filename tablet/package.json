@@ -69,6 +69,8 @@
   },
   "jest": {
     "preset": "jest-expo",
+    "_comentario_testTimeout": "Os 5s padrao do Jest foram pensados para teste de unidade. Aqui cada caso monta uma arvore React Native inteira, e o PRIMEIRO caso de cada arquivo ainda paga a inicializacao do grafo de modulos — em maquina lenta ou com a pasta sincronizada por nuvem, isso sozinho estoura o limite. O sintoma era um unico teste falhando por timeout enquanto os quinze seguintes, identicos em custo, passavam.",
+    "testTimeout": 20000,
     "setupFilesAfterEnv": [
       "<rootDir>/jest.setup.ts"
     ],
