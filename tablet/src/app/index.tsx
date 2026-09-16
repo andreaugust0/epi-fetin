@@ -3,7 +3,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
-import { EmptyState, ErrorState, InlineNotice, LoadingState } from '@/components/feedback';
+import { EmptyState, InlineNotice, LoadingState } from '@/components/feedback';
 import { Screen, SeloDoTerminal, StepIndicator } from '@/components/layout';
 import { Button, Text } from '@/components/ui';
 import { APP_MESSAGES } from '@/constants/messages';
@@ -16,7 +16,7 @@ import { colors, radii, spacing } from '@/theme';
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { requiredEpis, loading, error, reload } = useRequiredEpis();
+  const { requiredEpis, loading, semConfirmacao } = useRequiredEpis();
   const { impact } = useHaptics();
   const metrics = useTerminalMetrics();
 
@@ -63,16 +63,6 @@ export default function HomeScreen() {
     return (
       <Screen>
         <LoadingState />
-      </Screen>
-    );
-  }
-
-  if (error) {
-    return (
-      <Screen>
-        <View style={styles.centered}>
-          <ErrorState error={error} onRetry={() => void reload()} />
-        </View>
       </Screen>
     );
   }
@@ -140,6 +130,26 @@ export default function HomeScreen() {
               style={styles.aviso}
             />
           ) : null}
+
+          {/*
+            Servidor fora do ar, lista vinda do aparelho.
+
+            Avisa, e não bloqueia. A versão anterior devolvia um estado de erro
+            em tela cheia, e junto com a grade levava embora o título — que é
+            onde mora o toque longo do provisionamento, o único caminho para
+            corrigir o endereço do servidor. Um tablet que não alcançava o
+            servidor ficava impossível de consertar sem reinstalar o
+            aplicativo: a tela que denunciava o problema era a que impedia de
+            resolvê-lo.
+          */}
+          {semConfirmacao ? (
+            <InlineNotice
+              message={APP_MESSAGES.home.staleNotice}
+              icon="cloud-off-outline"
+              tone="warning"
+              style={styles.aviso}
+            />
+          ) : null}
         </View>
 
         {requiredEpis.length === 0 ? (
@@ -201,10 +211,6 @@ const styles = StyleSheet.create({
    * É o que evita a faixa vazia no meio da tela em telas altas.
    */
   equipment: {
-    flex: 1,
-    justifyContent: 'center',
-  },
-  centered: {
     flex: 1,
     justifyContent: 'center',
   },

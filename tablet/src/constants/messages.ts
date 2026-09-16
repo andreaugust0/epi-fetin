@@ -11,6 +11,8 @@ export const APP_MESSAGES = {
     startButton: 'Iniciar',
     simulationNotice:
       'Modo simulado: este tablet não está provisionado. Os resultados são gerados no próprio aparelho e nada é registrado no servidor.',
+    staleNotice:
+      'Não foi possível confirmar a exigência com o servidor. A lista abaixo é a última conhecida por este aparelho.',
     noEquipmentTitle: 'Nenhum equipamento ativo',
     noEquipmentDescription: 'Nenhum equipamento está configurado para verificação neste terminal.',
   },

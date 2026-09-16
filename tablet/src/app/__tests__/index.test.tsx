@@ -1,7 +1,10 @@
 import { waitFor } from '@testing-library/react-native';
 
 import { APP_MESSAGES } from '@/constants/messages';
-import { isFaceApiConfigured } from '@/features/face-recognition/services/faceApiConfig';
+import {
+  isFaceApiConfigured,
+  resolveFaceApiConfig,
+} from '@/features/face-recognition/services/faceApiConfig';
 import { renderScreen } from '@/test-utils/renderScreen';
 
 import HomeScreen from '../index';
@@ -39,9 +42,27 @@ jest.mock('@/features/face-recognition/services/faceApiConfig', () => ({
 }));
 
 const configurado = isFaceApiConfigured as jest.MockedFunction<typeof isFaceApiConfigured>;
+const resolverConfig = resolveFaceApiConfig as jest.MockedFunction<typeof resolveFaceApiConfig>;
+
+const SEM_PROVISIONAMENTO = {
+  baseUrl: null,
+  baseUrlSource: null,
+  pointId: null,
+  pointIdSource: null,
+} as const;
+
+const fetchOriginal = global.fetch;
 
 beforeEach(() => {
   configurado.mockReset();
+  // Volta ao padrão sem provisionamento: um teste que provisiona não pode
+  // deixar o seguinte falando com um servidor imaginário.
+  resolverConfig.mockReset();
+  resolverConfig.mockResolvedValue({ ...SEM_PROVISIONAMENTO });
+});
+
+afterEach(() => {
+  global.fetch = fetchOriginal;
 });
 
 /**
@@ -65,6 +86,35 @@ describe('tela inicial · aviso de modo simulado', () => {
     await waitFor(() =>
       expect(view.queryByText(APP_MESSAGES.home.simulationNotice)).toBeTruthy(),
     );
+  });
+
+  /**
+   * O tablet NÃO pode ficar sem saída quando o servidor não responde.
+   *
+   * A primeira versão desta tela devolvia um estado de erro em tela cheia
+   * quando a consulta de exigência falhava. Junto com a grade, ia embora o
+   * título — e é no título que mora o toque longo que abre o provisionamento,
+   * o único caminho para corrigir o endereço do servidor no aparelho. Um
+   * tablet que não alcançava o servidor ficava impossível de consertar sem
+   * reinstalar o aplicativo: a tela que denunciava o problema era a que
+   * impedia de resolvê-lo.
+   *
+   * O teste observa o título, não o aviso, porque é o título que é a saída.
+   */
+  it('continua utilizável quando o servidor não responde', async () => {
+    configurado.mockResolvedValue(true);
+    resolverConfig.mockResolvedValue({
+      baseUrl: 'http://192.168.0.10:8000',
+      baseUrlSource: 'override',
+      pointId: 1,
+      pointIdSource: 'override',
+    });
+    global.fetch = jest.fn().mockRejectedValue(new Error('rede fora')) as unknown as typeof fetch;
+
+    const view = await renderScreen(<HomeScreen />);
+
+    await waitFor(() => expect(view.queryByText(APP_MESSAGES.home.staleNotice)).toBeTruthy());
+    expect(view.queryByText(APP_MESSAGES.home.title)).toBeTruthy();
   });
 
   it('não avisa quando o tablet está provisionado', async () => {
