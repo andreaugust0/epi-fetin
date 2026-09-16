@@ -9,7 +9,7 @@ import { IdentifyAs, pressAndSettle, renderScreen } from '@/test-utils/renderScr
 import PreparationScreen from '../preparacao';
 
 /*
- * A espera de posicionamento vale cinco segundos em campo — o tempo de a
+ * A espera de posicionamento vale alguns segundos em campo — o tempo de a
  * pessoa chegar na marcação do chão. Aqui ela vai a zero: esperar de verdade
  * estouraria o limite do `waitFor` em todo teste do fluxo, e aumentar esse
  * limite deixaria a suíte lenta para medir uma pausa que não é o objeto de

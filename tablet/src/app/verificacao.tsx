@@ -52,7 +52,7 @@ export default function VerificationScreen() {
    * O efeito abaixo dependia de `runVerification`, que muda de identidade
    * sempre que `requiredEpis` muda de identidade. E a lista é recarregada a
    * cada foco de tela: entrar aqui dispara a consulta ao servidor, a resposta
-   * chega durante os cinco segundos de espera e troca o array. O efeito
+   * chega durante os segundos de espera e troca o array. O efeito
    * reexecutava, a limpeza CANCELAVA o temporizador, e a nova execução caía no
    * `return` do `hasStartedRef` — que já estava marcado. A captura nunca saía,
    * e a tela varria para sempre.
@@ -222,9 +222,9 @@ export default function VerificationScreen() {
           {/*
             `posicionando || isDetecting` em vez de só `isDetecting`: a linha
             precisa varrer desde o instante em que a tela abre. Ligada apenas
-            na detecção, ela ficaria parada durante a espera — cinco segundos
-            de tela morta bem quando a pessoa está andando de costas e quer
-            saber se o sistema está vivo.
+            na detecção, ela ficaria parada durante a espera — segundos de
+            tela morta bem quando a pessoa está andando de costas e quer saber
+            se o sistema está vivo.
           */}
           <EpiFigure
             items={items}

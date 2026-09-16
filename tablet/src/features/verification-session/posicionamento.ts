@@ -9,21 +9,25 @@
  *
  * A espera não é tempo morto, e é por isso que ela não aparece como contagem
  * regressiva. O laço da Raspberry guarda frames continuamente, e a votação
- * acontece sobre os últimos três segundos antes do comando: os frames que
- * decidem o resultado são exatamente os capturados durante esta espera. A
- * linha de varredura que corre na tela cobre o intervalo em que a imagem que
- * será julgada está sendo formada — ela não promete nada que não esteja
- * acontecendo.
+ * acontece sobre os frames mais recentes: os que decidem o resultado são
+ * exatamente os capturados durante esta espera. A linha de varredura que corre
+ * na tela cobre o intervalo em que a imagem que será julgada está sendo
+ * formada — ela não promete nada que não esteja acontecendo.
  *
- * Cinco segundos compram cerca de dois segundos de pessoa já parada no lugar
- * certo antes de a janela de três segundos começar a valer.
+ * QUANTO a borda olha para trás, exatamente: cinco frames espaçados de 0,2 s,
+ * ou seja pouco menos de UM SEGUNDO de história. Os 3 s do anel são o limite
+ * de validade — frame mais velho que isso é descartado —, não o tamanho da
+ * amostra. Confundir os dois leva a superestimar a espera necessária.
+ *
+ * Então três segundos bastam: dois de caminhada até a marcação, e o último
+ * segundo — o que de fato decide — com a pessoa já parada no lugar.
  *
  * O ajuste existe para o teste, no mesmo padrão das fábricas de serviço deste
- * projeto: esperar cinco segundos de verdade faria cada teste do fluxo estourar
+ * projeto: esperar os segundos de verdade faria cada teste do fluxo estourar
  * o limite do `waitFor`, e aumentar esse limite deixaria a suíte lenta para
  * medir uma pausa que não é o objeto do teste.
  */
-const PADRAO_MS = 5000;
+const PADRAO_MS = 3000;
 
 let esperaMs = PADRAO_MS;
 

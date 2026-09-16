@@ -12,7 +12,7 @@ import PreparationScreen from '../preparacao';
 import VerificationScreen from '../verificacao';
 
 /*
- * A espera de posicionamento vale cinco segundos em campo — o tempo de a
+ * A espera de posicionamento vale alguns segundos em campo — o tempo de a
  * pessoa chegar na marcação do chão. Aqui ela vai a zero: esperar de verdade
  * estouraria o limite do `waitFor` em todo teste do fluxo, e aumentar esse
  * limite deixaria a suíte lenta para medir uma pausa que não é o objeto de
@@ -111,7 +111,7 @@ describe('tela de verificação de EPI', () => {
    * Foi assim que ela se perdia: o efeito que agenda o disparo dependia de
    * `runVerification`, que muda de identidade quando `requiredEpis` muda de
    * identidade. Entrar nesta tela recarrega a lista do servidor, a resposta
-   * chega no meio dos cinco segundos, o efeito reexecutava, a limpeza
+   * chega no meio da espera, o efeito reexecutava, a limpeza
    * CANCELAVA o temporizador — e a nova execução caía no `return` do
    * `hasStartedRef`, que já estava marcado. A tela varria para sempre e nada
    * era capturado.
