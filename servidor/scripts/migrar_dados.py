@@ -1,8 +1,8 @@
 """Migração de dados para um banco que já existe.
 
 O `init_db.py` só semeia banco vazio, então mudanças de catálogo e de schema
-não chegam sozinhas a quem já tem dados. Este script aplica as duas
-pendências atuais, e é seguro rodar quantas vezes quiser.
+não chegam sozinhas a quem já tem dados. Este script aplica as pendências
+atuais, e é seguro rodar quantas vezes quiser.
 
     python -m scripts.migrar_dados
 
@@ -110,6 +110,37 @@ async def catalogo() -> None:
         await db.commit()
 
 
+async def indice_periodo_verificacoes() -> None:
+    """Índice em `verificacoes.iniciada_em`, para os filtros de período da
+    área de Relatórios e Analytics.
+
+    Esses filtros costumam vir sem `ponto_id` nem `pessoa_id` — "todas as
+    verificações entre duas datas" — e os índices compostos que já existem
+    (`ix_verif_ponto_data`, `ix_verif_pessoa_data`) não atendem bem esse
+    caso: o período não é a coluna líder em nenhum dos dois, então o
+    Postgres não pode usá-los para um filtro só de data.
+
+    `CONCURRENTLY` evita travar `verificacoes` para escrita durante a
+    construção — ela é a tabela que mais cresce no sistema, e provavelmente
+    já tem histórico quando este script rodar num banco existente. Por isso
+    roda em `AUTOCOMMIT`, fora de uma transação: o Postgres recusa
+    `CREATE INDEX CONCURRENTLY` dentro de um `BEGIN`/`COMMIT`.
+
+    Banco novo (`init_db.py` -> `create_all`) já nasce com este índice
+    junto dos outros declarados no modelo; isto aqui é só para quem já
+    tinha `verificacoes` antes dele existir no código.
+    """
+    async with engine.connect() as conn:
+        conn = await conn.execution_options(isolation_level="AUTOCOMMIT")
+        await conn.execute(
+            text(
+                "CREATE INDEX CONCURRENTLY IF NOT EXISTS ix_verif_iniciada "
+                "ON verificacoes (iniciada_em)"
+            )
+        )
+    print("  ix_verif_iniciada presente em verificacoes(iniciada_em)")
+
+
 async def main() -> None:
     print("1. schema")
     try:
@@ -123,6 +154,9 @@ async def main() -> None:
 
     print("\n3. catálogo de EPIs")
     await catalogo()
+
+    print("\n4. índices da área de Relatórios e Analytics")
+    await indice_periodo_verificacoes()
 
     async with SessionLocal() as db:
         tipos = (await db.execute(select(TipoEpi).order_by(TipoEpi.codigo))).scalars().all()

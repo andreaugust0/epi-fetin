@@ -16,10 +16,14 @@ import csv
 import io
 from collections.abc import AsyncIterator
 
+from datetime import datetime
+from zoneinfo import ZoneInfo
+
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import StreamingResponse
-from sqlalchemy import case, func, select
+from sqlalchemy import ColumnElement, case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import noload
 
 from app.api.deps import DB, admin_atual
 from app.core.config import settings
@@ -36,13 +40,18 @@ from app.db.models import (
 )
 from app.services.filtros_analytics import (
     FiltrosAnalytics,
-    agora,
     condicoes,
     filtros_analytics,
     periodo_anterior,
 )
 
 router = APIRouter(tags=["analytics"])
+
+
+def _contagem(status: StatusVerificacao) -> ColumnElement[int]:
+    """`COUNT` condicional por status — repetido em quase todo endpoint
+    deste módulo; existe aqui para não divergir um do outro com o tempo."""
+    return func.count(case((Verificacao.status == status, 1)))
 
 
 @router.get("/relatorios/analytics/opcoes")
@@ -110,12 +119,8 @@ async def indicadores(
             await db.execute(
                 select(
                     func.count(Verificacao.id),
-                    func.count(
-                        case((Verificacao.status == StatusVerificacao.APROVADA, 1))
-                    ),
-                    func.count(
-                        case((Verificacao.status == StatusVerificacao.REPROVADA, 1))
-                    ),
+                    _contagem(StatusVerificacao.APROVADA),
+                    _contagem(StatusVerificacao.REPROVADA),
                     func.avg(Verificacao.latencia_ms),
                 ).where(*cond)
             )
@@ -161,7 +166,7 @@ async def indicadores(
     if desde_ant is not None:
         f_anterior = FiltrosAnalytics(
             desde=desde_ant,
-            ate=ate_ant,
+            ate_exclusivo=ate_ant,
             ponto_id=f.ponto_id,
             situacao=f.situacao,
             setor=f.setor,
@@ -185,10 +190,10 @@ async def tendencia(
     para trocar quais colunas voltam.
     """
     dia = func.date_trunc("day", Verificacao.iniciada_em).label("dia")
-    aprovadas = func.count(case((Verificacao.status == StatusVerificacao.APROVADA, 1)))
-    reprovadas = func.count(case((Verificacao.status == StatusVerificacao.REPROVADA, 1)))
-    expiradas = func.count(case((Verificacao.status == StatusVerificacao.EXPIRADA, 1)))
-    erros = func.count(case((Verificacao.status == StatusVerificacao.ERRO, 1)))
+    aprovadas = _contagem(StatusVerificacao.APROVADA)
+    reprovadas = _contagem(StatusVerificacao.REPROVADA)
+    expiradas = _contagem(StatusVerificacao.EXPIRADA)
+    erros = _contagem(StatusVerificacao.ERRO)
 
     stmt = (
         select(
@@ -271,14 +276,26 @@ async def conformidade_por_ponto(
     """Igual a `/relatorios/conformidade`, mas com o conjunto completo de
     filtros — o endpoint antigo continua existindo com sua assinatura
     (`dias`) porque o painel executivo já depende dela.
+
+    A taxa usa `aprovadas / (aprovadas + reprovadas)` — as mesmas
+    "decididas" de `indicadores()` e `tendencia()`, não `aprovadas / total`.
+    `/relatorios/conformidade` (o endpoint antigo) usa `total` no
+    denominador, o que deixaria EXPIRADA e ERRO baixarem a conformidade de
+    um ponto por falha de infraestrutura, não por comportamento de
+    ninguém — exatamente o que o comentário de `panorama()` em
+    `relatorios.py` explica que este sistema evita de propósito. Como este
+    é um endpoint novo, sem consumidor que dependa do comportamento antigo,
+    ele usa a regra correta desde o início em vez de repetir a divergência.
     """
-    aprovadas = func.count(case((Verificacao.status == StatusVerificacao.APROVADA, 1)))
+    aprovadas = _contagem(StatusVerificacao.APROVADA)
+    reprovadas = _contagem(StatusVerificacao.REPROVADA)
     stmt = (
         select(
             PontoAcesso.id,
             PontoAcesso.nome,
             func.count(Verificacao.id).label("total"),
             aprovadas.label("aprovadas"),
+            reprovadas.label("reprovadas"),
         )
         .join(Verificacao, Verificacao.ponto_id == PontoAcesso.id)
         .where(*condicoes(f))
@@ -293,9 +310,11 @@ async def conformidade_por_ponto(
                 "nome": nome,
                 "total": total,
                 "aprovadas": aprov,
-                "taxa_conformidade": round(100 * aprov / total, 1) if total else None,
+                "taxa_conformidade": (
+                    round(100 * aprov / (aprov + rep), 1) if (aprov + rep) else None
+                ),
             }
-            for pid, nome, total, aprov in linhas
+            for pid, nome, total, aprov, rep in linhas
         ],
     }
 
@@ -314,7 +333,7 @@ async def horarios(
     hora = func.extract("hour", local).label("hora")
     dia_semana = func.extract("dow", local).label("dia_semana")
 
-    reprovadas = func.count(case((Verificacao.status == StatusVerificacao.REPROVADA, 1)))
+    reprovadas = _contagem(StatusVerificacao.REPROVADA)
     stmt = (
         select(dia_semana, hora, func.count(Verificacao.id), reprovadas)
         .where(*condicoes(f))
@@ -352,8 +371,8 @@ async def setores(
     fatia grande aí é, em si, um problema de cadastro a resolver.
     """
     setor_rotulo = func.coalesce(Pessoa.setor, "Não informado").label("setor")
-    aprovadas = func.count(case((Verificacao.status == StatusVerificacao.APROVADA, 1)))
-    reprovadas = func.count(case((Verificacao.status == StatusVerificacao.REPROVADA, 1)))
+    aprovadas = _contagem(StatusVerificacao.APROVADA)
+    reprovadas = _contagem(StatusVerificacao.REPROVADA)
     stmt = (
         select(
             setor_rotulo,
@@ -414,8 +433,8 @@ async def desempenho(
         )
     ).all()
 
-    aprovadas = func.count(case((Verificacao.status == StatusVerificacao.APROVADA, 1)))
-    reprovadas = func.count(case((Verificacao.status == StatusVerificacao.REPROVADA, 1)))
+    aprovadas = _contagem(StatusVerificacao.APROVADA)
+    reprovadas = _contagem(StatusVerificacao.REPROVADA)
     linhas_versao = (
         await db.execute(
             select(
@@ -504,6 +523,11 @@ async def tabela(
         .order_by(Verificacao.iniciada_em.desc())
         .limit(limite)
         .offset(offset)
+        # `evidencias` e `eventos` são selectin por padrão no modelo, mas
+        # `_linha_analytics` nunca os lê — sem isto, toda página desta
+        # tabela dispara duas consultas extras (uma por relação) para
+        # dados que são descartados na sequência.
+        .options(noload(Verificacao.evidencias), noload(Verificacao.eventos))
     )
     # `deteccoes`, `pessoa` e `ponto` já vêm carregados pela estratégia do
     # próprio modelo (selectin / joined) — nenhuma consulta extra por linha.
@@ -543,10 +567,13 @@ def _linha_csv(v: Verificacao) -> list[str]:
     ]
 
 
-def _fuso_exibicao():
-    from zoneinfo import ZoneInfo
-
+def _fuso_exibicao() -> ZoneInfo:
     return ZoneInfo(settings.TZ_EXIBICAO)
+
+
+#: Quantas verificações a ORM materializa por vez durante a exportação.
+#: Ver o comentário em `_gerar_csv` sobre por que este número existe.
+LOTE_EXPORTACAO = 200
 
 
 async def _gerar_csv(db: AsyncSession, cond: list) -> AsyncIterator[bytes]:
@@ -555,6 +582,25 @@ async def _gerar_csv(db: AsyncSession, cond: list) -> AsyncIterator[bytes]:
     Nada de `SELECT` completo em memória: o objetivo explícito é permitir
     exportar meses de verificações sem que o processo da API precise
     materializar todas elas em uma lista Python antes de começar a escrever.
+
+    Isso só é verdade com `yield_per` definido. Sem ele, `stream_scalars`
+    ainda usa um cursor de servidor no Postgres, mas o carregador `selectin`
+    de `deteccoes` (ver `Verificacao.deteccoes` no modelo) puxa TODAS as
+    chaves primárias do resultado antes de liberar a primeira linha para
+    quem consome — na prática, materializa o `SELECT` inteiro em objetos
+    Python antes de escrever um byte, exatamente o que este código existe
+    para evitar. Confirmado lendo o comportamento real do SQLAlchemy: sem
+    `yield_per`, uma exportação de 3000 linhas disparava as 6 consultas do
+    `selectin` (lotes de 500) por inteiro antes da primeira linha sair;
+    com `yield_per(200)`, cada lote de 200 é carregado e escrito antes do
+    próximo ser buscado.
+
+    `.unique()` não é usado aqui de propósito: o SQLAlchemy recusa combinar
+    `yield_per` com `unique()` (`InvalidRequestError`), e não faz falta —
+    nada neste `SELECT` faz `JOIN` com uma coleção (o que duplicaria
+    linhas). `Verificacao.pessoa`/`.ponto` são muitos-para-um, e
+    `deteccoes` é uma consulta `selectin` separada, não um `JOIN` na
+    consulta principal.
     """
     # BOM: sem ele, o Excel abre um CSV UTF-8 com acento como texto corrompido.
     yield b"\xef\xbb\xbf"
@@ -566,9 +612,15 @@ async def _gerar_csv(db: AsyncSession, cond: list) -> AsyncIterator[bytes]:
     buffer.seek(0)
     buffer.truncate(0)
 
-    stmt = select(Verificacao).where(*cond).order_by(Verificacao.iniciada_em.desc())
+    stmt = (
+        select(Verificacao)
+        .where(*cond)
+        .order_by(Verificacao.iniciada_em.desc())
+        .execution_options(yield_per=LOTE_EXPORTACAO)
+        .options(noload(Verificacao.evidencias), noload(Verificacao.eventos))
+    )
     resultado = await db.stream_scalars(stmt)
-    async for v in resultado.unique():
+    async for v in resultado:
         escritor.writerow(_linha_csv(v))
         yield buffer.getvalue().encode("utf-8")
         buffer.seek(0)
@@ -587,7 +639,10 @@ async def exportar_csv(
     arquivo é para auditoria operacional (quem, quando, onde, por quê), não
     um segundo caminho para tirar dado biométrico do sistema.
     """
-    nome_arquivo = f"relatorio-epi-{agora():%Y-%m-%d}.csv"
+    # Data do fuso de exibição, não UTC puro: perto da meia-noite em UTC-3 as
+    # duas divergem, e o nome do arquivo deveria contar a mesma história que
+    # o resto do relatório.
+    nome_arquivo = f"relatorio-epi-{datetime.now(_fuso_exibicao()):%Y-%m-%d}.csv"
     return StreamingResponse(
         _gerar_csv(db, condicoes(f)),
         media_type="text/csv; charset=utf-8",

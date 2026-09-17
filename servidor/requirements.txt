@@ -39,3 +39,9 @@ paho-mqtt==2.1.0
 onnxruntime==1.20.1
 opencv-python-headless==4.10.0.84
 numpy==1.26.4
+
+# testes (scripts/testar_*.py): fastapi.testclient.TestClient importa
+# starlette.testclient, que por sua vez exige httpx — sem isto, nenhum
+# script de teste baseado em TestClient roda num ambiente instalado só a
+# partir deste arquivo.
+httpx==0.28.1
