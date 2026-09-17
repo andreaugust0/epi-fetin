@@ -18,7 +18,22 @@ export interface FiltrosEstado {
   pessoaRotulo: string;
 }
 
-const paraEntradaData = (d: Date): string => d.toISOString().slice(0, 10);
+/**
+ * Data local do navegador, no formato `yyyy-mm-dd` que `<input type="date">`
+ * usa.
+ *
+ * `d.toISOString()` estava aqui antes, e é o bug clássico: ela devolve a
+ * data em UTC, não a data local. Depois das 21h em São Paulo (UTC-3), o
+ * relógio já virou o dia em UTC — então "hoje" calculado assim vira amanhã,
+ * e os atalhos de 7/30/90 dias passam a cobrir uma janela inteira deslocada
+ * para a frente bem nas horas em que mais gente passa pela portaria.
+ */
+const paraEntradaData = (d: Date): string => {
+  const ano = d.getFullYear();
+  const mes = String(d.getMonth() + 1).padStart(2, '0');
+  const dia = String(d.getDate()).padStart(2, '0');
+  return `${ano}-${mes}-${dia}`;
+};
 
 /** 30 dias (hoje incluso) é o padrão ao abrir a página — o mesmo recorte do
  * painel executivo, para os dois não começarem contando histórias diferentes. */
@@ -42,16 +57,17 @@ export function filtrosIniciais(dias = 30): FiltrosEstado {
 /**
  * Converte o formulário nos parâmetros que a API espera.
  *
- * As datas viram limites UTC explícitos (`Z`) em vez de horário local sem
- * fuso: um `datetime` sem fuso não compara de forma confiável com a coluna
- * `TIMESTAMPTZ` do Postgres. É a mesma simplificação que `tendencia()` já
- * faz ao agrupar por dia em UTC — este projeto não tenta ajustar o corte de
- * "dia" para o fuso local em nenhum outro lugar.
+ * `desde`/`ate` viajam como data pura (`yyyy-mm-dd`), sem hora nem fuso — é
+ * o próprio servidor que decide o que "o dia 17" significa em segundos UTC,
+ * usando o fuso de exibição configurado nele (`TZ_EXIBICAO`). Construir o
+ * limite UTC aqui no navegador era o bug antigo: `T00:00:00Z`/`T23:59:59Z`
+ * ignoravam que o servidor exibe em UTC-3, e cortavam as últimas ~3 horas de
+ * cada dia local para o dia seguinte.
  */
 export function paraConsulta(f: FiltrosEstado): FiltrosAnalytics {
   return {
-    desde: f.desde ? `${f.desde}T00:00:00.000Z` : undefined,
-    ate: f.ate ? `${f.ate}T23:59:59.999Z` : undefined,
+    desde: f.desde || undefined,
+    ate: f.ate || undefined,
     ponto_id: f.pontoId ? Number(f.pontoId) : undefined,
     situacao: f.situacao || undefined,
     setor: f.setor || undefined,
@@ -101,7 +117,10 @@ export function FiltrosRelatorio({ filtros, opcoes, aoMudar, aoLimpar }: Props) 
   }
   if (filtros.tipoEpi) {
     const rotulo = opcoes?.tipos_epi.find((t) => t.codigo === filtros.tipoEpi)?.rotulo ?? filtros.tipoEpi;
-    ativos.push({ rotulo: `EPI: ${rotulo}`, remover: () => aoMudar({ tipoEpi: '' }) });
+    ativos.push({
+      rotulo: `EPI inspecionado: ${rotulo}`,
+      remover: () => aoMudar({ tipoEpi: '' }),
+    });
   }
   if (filtros.versaoModelo) {
     ativos.push({
@@ -176,7 +195,11 @@ export function FiltrosRelatorio({ filtros, opcoes, aoMudar, aoLimpar }: Props) 
           </select>
         </Campo>
 
-        <Campo rotulo="Tipo de EPI">
+        {/* "Inspecionado", não "ausente": o filtro casa qualquer verificação em
+            que este EPI foi checado, esteja presente ou faltando — não só as
+            que reprovaram por causa dele. O rótulo existe para não deixar
+            isso subentendido. */}
+        <Campo rotulo="EPI inspecionado">
           <select value={filtros.tipoEpi} onChange={(e) => aoMudar({ tipoEpi: e.target.value })}>
             <option value="">Todos</option>
             {(opcoes?.tipos_epi ?? []).map((t) => (
@@ -256,6 +279,10 @@ function SeletorPessoa({
   const [sugestoes, setSugestoes] = useState<Pessoa[]>([]);
   const [aberto, setAberto] = useState(false);
   const temporizador = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Duas teclas digitadas com menos de 300ms de intervalo entre si podem ter
+  // as duas buscas em voo ao mesmo tempo; sem isto, a resposta da busca MAIS
+  // ANTIGA pode chegar depois e substituir sugestões já mais recentes.
+  const buscaAtual = useRef(0);
 
   useEffect(() => setBusca(rotulo), [rotulo]);
 
@@ -268,13 +295,17 @@ function SeletorPessoa({
       return;
     }
     temporizador.current = setTimeout(() => {
+      const idDestaBusca = ++buscaAtual.current;
       api
         .pessoas({ busca: valor.trim(), limite: 8 })
         .then((pagina) => {
+          if (idDestaBusca !== buscaAtual.current) return;
           setSugestoes(pagina.itens);
           setAberto(true);
         })
-        .catch(() => setSugestoes([]));
+        .catch(() => {
+          if (idDestaBusca === buscaAtual.current) setSugestoes([]);
+        });
     }, 300);
   }
 

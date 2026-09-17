@@ -113,7 +113,9 @@ export interface EpisFaltantes {
  * filtro no objeto (ou passar string vazia) equivale a "todos".
  */
 export interface FiltrosAnalytics {
+  /** Data pura `yyyy-mm-dd`, sem hora nem fuso — ver `paraConsulta`. */
   desde?: string;
+  /** Idem `desde`; ambas inclusive no calendário local do servidor. */
   ate?: string;
   ponto_id?: number;
   situacao?: string;

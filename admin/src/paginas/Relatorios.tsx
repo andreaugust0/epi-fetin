@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { mdiChartBoxOutline, mdiTrayArrowDown } from '@mdi/js';
 import {
   api,
@@ -56,7 +56,14 @@ export function Relatorios() {
     api.analyticsOpcoes().then(setOpcoes).catch(() => {});
   }, []);
 
+  // Guarda contra resposta desatualizada: se o usuário troca de filtro
+  // antes da primeira chamada voltar, a resposta antiga — que pode chegar
+  // DEPOIS da nova, a rede não garante ordem — não pode sobrescrever o
+  // estado da consulta mais recente.
+  const requisicaoAtual = useRef(0);
+
   const carregar = useCallback(async () => {
+    const idDestaChamada = ++requisicaoAtual.current;
     setErro(null);
     setCarregando(true);
     try {
@@ -70,6 +77,7 @@ export function Relatorios() {
         api.analyticsSetores(consulta),
         api.analyticsDesempenho(consulta),
       ]);
+      if (idDestaChamada !== requisicaoAtual.current) return;
       setIndicadores(ind);
       setTendencia(ten);
       setEpisAusentes(epis);
@@ -78,9 +86,10 @@ export function Relatorios() {
       setSetores(set);
       setDesempenho(des);
     } catch (e) {
+      if (idDestaChamada !== requisicaoAtual.current) return;
       setErro(e instanceof ErroApi ? e.message : 'Falha ao carregar os relatórios.');
     } finally {
-      setCarregando(false);
+      if (idDestaChamada === requisicaoAtual.current) setCarregando(false);
     }
   }, [filtros]);
 
@@ -88,7 +97,10 @@ export function Relatorios() {
     void carregar();
   }, [carregar]);
 
+  const requisicaoTabelaAtual = useRef(0);
+
   const carregarTabela = useCallback(async () => {
+    const idDestaChamada = ++requisicaoTabelaAtual.current;
     setErroTabela(null);
     setCarregandoTabela(true);
     try {
@@ -98,11 +110,13 @@ export function Relatorios() {
         POR_PAGINA_TABELA,
         paginaTabela * POR_PAGINA_TABELA,
       );
+      if (idDestaChamada !== requisicaoTabelaAtual.current) return;
       setTabela(pagina);
     } catch (e) {
+      if (idDestaChamada !== requisicaoTabelaAtual.current) return;
       setErroTabela(e instanceof ErroApi ? e.message : 'Falha ao carregar a tabela.');
     } finally {
-      setCarregandoTabela(false);
+      if (idDestaChamada === requisicaoTabelaAtual.current) setCarregandoTabela(false);
     }
   }, [filtros, paginaTabela]);
 
@@ -110,14 +124,15 @@ export function Relatorios() {
     void carregarTabela();
   }, [carregarTabela]);
 
-  // Trocar filtro sem voltar à primeira página deixaria a tabela vazia sem
-  // explicação — o mesmo cuidado que a tela de Verificações já toma.
-  useEffect(() => {
-    setPaginaTabela(0);
-  }, [filtros]);
-
+  // O reset de página mora AQUI, junto da troca de filtro — não num efeito
+  // separado ouvindo `filtros`. Os dois `setState` do React são
+  // sincronizados no mesmo evento, então viram um único re-render: nenhuma
+  // chamada intermediária busca a página antiga com o filtro novo antes do
+  // reset "alcançar". Um efeito separado faria exatamente essa chamada a
+  // mais a cada troca de filtro.
   function aoMudarFiltros(patch: Partial<FiltrosEstado>) {
     setFiltros((f) => ({ ...f, ...patch }));
+    setPaginaTabela(0);
   }
 
   async function aoExportar() {
@@ -202,7 +217,10 @@ export function Relatorios() {
         filtros={filtros}
         opcoes={opcoes}
         aoMudar={aoMudarFiltros}
-        aoLimpar={() => setFiltros(filtrosIniciais())}
+        aoLimpar={() => {
+          setFiltros(filtrosIniciais());
+          setPaginaTabela(0);
+        }}
       />
 
       {erro ? <Aviso tipo="erro">{erro}</Aviso> : null}
