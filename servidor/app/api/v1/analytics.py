@@ -38,6 +38,7 @@ from app.db.models import (
     UsuarioAdmin,
     Verificacao,
 )
+from app.db.session import SessionLocal
 from app.services.filtros_analytics import (
     FiltrosAnalytics,
     condicoes,
@@ -576,12 +577,29 @@ def _fuso_exibicao() -> ZoneInfo:
 LOTE_EXPORTACAO = 200
 
 
-async def _gerar_csv(db: AsyncSession, cond: list) -> AsyncIterator[bytes]:
+async def _gerar_csv(cond: list) -> AsyncIterator[bytes]:
     """Gera o CSV linha a linha com um cursor de servidor (`stream_scalars`).
 
-    Nada de `SELECT` completo em memória: o objetivo explícito é permitir
-    exportar meses de verificações sem que o processo da API precise
-    materializar todas elas em uma lista Python antes de começar a escrever.
+    Abre a PRÓPRIA sessão (`async with SessionLocal()`), em vez de receber
+    uma via `Depends(get_session)` como o resto do módulo. Não é estilo:
+    testado empiricamente (contando eventos `checkout`/`checkin` do pool),
+    uma sessão injetada por dependência e usada dentro do corpo de um
+    `StreamingResponse` fecha normalmente (o `AsyncSession.close()` roda,
+    sem erro) mas a conexão correspondente NUNCA dispara o evento `checkin`
+    do pool — ela fica presa até o coletor de lixo alcançá-la, momento em
+    que o event loop que a criou já fechou, e o SQLAlchemy explode com
+    `RuntimeError: Event loop is closed` ao tentar terminá-la. Isso é
+    específico da combinação `StreamingResponse` + dependência com `yield`:
+    o mesmo `stream_scalars` usado por um endpoint que devolve JSON comum
+    (como `tabela()`, que consome o resultado inteiro antes de retornar)
+    fecha a conexão corretamente. Abrir a sessão dentro do próprio gerador
+    resolve porque seu ciclo de vida passa a coincidir exatamente com a
+    tarefa que o Starlette usa para iterar o corpo da resposta, em vez de
+    ficar preso ao mecanismo de encerramento de dependências do FastAPI.
+
+    Fora isso, nada de `SELECT` completo em memória: o objetivo explícito é
+    permitir exportar meses de verificações sem que o processo da API
+    precise materializar todas elas em uma lista Python antes de escrever.
 
     Isso só é verdade com `yield_per` definido. Sem ele, `stream_scalars`
     ainda usa um cursor de servidor no Postgres, mas o carregador `selectin`
@@ -619,32 +637,35 @@ async def _gerar_csv(db: AsyncSession, cond: list) -> AsyncIterator[bytes]:
         .execution_options(yield_per=LOTE_EXPORTACAO)
         .options(noload(Verificacao.evidencias), noload(Verificacao.eventos))
     )
-    resultado = await db.stream_scalars(stmt)
-    async for v in resultado:
-        escritor.writerow(_linha_csv(v))
-        yield buffer.getvalue().encode("utf-8")
-        buffer.seek(0)
-        buffer.truncate(0)
+    async with SessionLocal() as db:
+        resultado = await db.stream_scalars(stmt)
+        async for v in resultado:
+            escritor.writerow(_linha_csv(v))
+            yield buffer.getvalue().encode("utf-8")
+            buffer.seek(0)
+            buffer.truncate(0)
 
 
 @router.get("/relatorios/analytics/exportar")
 async def exportar_csv(
     f: FiltrosAnalytics = Depends(filtros_analytics),
     _: UsuarioAdmin = Depends(admin_atual),
-    db: AsyncSession = DB,
 ) -> StreamingResponse:
     """CSV com TODOS os registros do filtro ativo — não só a página carregada.
 
     Não exporta embeddings, imagens nem qualquer campo de `Evidencia`: o
     arquivo é para auditoria operacional (quem, quando, onde, por quê), não
     um segundo caminho para tirar dado biométrico do sistema.
+
+    Sem `db: AsyncSession = DB` de propósito — `_gerar_csv` abre a própria
+    sessão. Ver o docstring dela para o porquê.
     """
     # Data do fuso de exibição, não UTC puro: perto da meia-noite em UTC-3 as
     # duas divergem, e o nome do arquivo deveria contar a mesma história que
     # o resto do relatório.
     nome_arquivo = f"relatorio-epi-{datetime.now(_fuso_exibicao()):%Y-%m-%d}.csv"
     return StreamingResponse(
-        _gerar_csv(db, condicoes(f)),
+        _gerar_csv(condicoes(f)),
         media_type="text/csv; charset=utf-8",
         headers={"Content-Disposition": f'attachment; filename="{nome_arquivo}"'},
     )

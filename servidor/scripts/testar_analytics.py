@@ -395,6 +395,23 @@ async def limpar() -> None:
             await db.execute(delete(PontoAcesso).where(PontoAcesso.id.in_(pontos)))
         await db.commit()
 
+    # `limpar()` é chamado de dois lugares que rodam em event loops
+    # DIFERENTES: uma vez dentro de `preparar()` (que já descarta o pool no
+    # fim) e de novo, sozinho, em `asyncio.run(limpar())` ao final de
+    # `main()` — este último cria um loop novo só para esta chamada e o
+    # fecha assim que ela termina. A conexão que esta função abre é
+    # devolvida ao pool do `engine` (que é um singleton do módulo,
+    # compartilhado entre todas as chamadas), não fechada de verdade — e o
+    # pool a mantém viva, presa ao transport asyncio daquele loop, para
+    # reaproveitar depois. Quando não há "depois" (o loop já fechou), essa
+    # conexão só é encerrada quando o coletor de lixo a alcança, e aí o
+    # SQLAlchemy tenta um `terminate()` assíncrono contra um loop que não
+    # existe mais — daí o `RuntimeError: Event loop is closed` e o
+    # `SAWarning` de conexão não devolvida, os dois aparecendo bem no fim do
+    # script. Descartar aqui garante que todo `limpar()`, não importa qual
+    # loop o chamou, sai sem deixar conexão pendurada.
+    await engine.dispose()
+
 
 async def preparar() -> dict:
     """Cria o cenário no banco e devolve os IDs/valores que os testes
