@@ -2,6 +2,7 @@
 from fastapi import APIRouter
 
 from app.api.v1 import (
+    analytics,
     auth,
     catalogo,
     evidencias,
@@ -23,6 +24,7 @@ api_router.include_router(pontos.router)
 api_router.include_router(pessoas.router)
 api_router.include_router(catalogo.router)
 api_router.include_router(relatorios.router)
+api_router.include_router(analytics.router)
 api_router.include_router(politica.router)
 
 # WebSocket fora do prefixo /api/v1

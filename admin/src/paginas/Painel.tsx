@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   api,
   ErroApi,
@@ -15,7 +15,15 @@ import { mdiShieldCheck } from '@mdi/js';
 import { BarrasRanking, type ItemBarra } from '../componentes/BarrasRanking';
 import { LinhaTendencia } from '../componentes/LinhaTendencia';
 import { MapaHorarios } from '../componentes/MapaHorarios';
-import { Aviso, Icone, Metrica, Pastilha, formatarData } from '../componentes/basicos';
+import {
+  Aviso,
+  Icone,
+  Metrica,
+  Pastilha,
+  Secao,
+  Variacao,
+  formatarData,
+} from '../componentes/basicos';
 
 const PERIODOS = [7, 30, 90];
 
@@ -30,78 +38,6 @@ const PERIODOS = [7, 30, 90];
  * coluna de passagens ao lado mostra por que a taxa está vazia.
  */
 const MINIMO_PARA_TAXA = 10;
-
-/**
- * Variação contra o período anterior de mesmo tamanho.
- *
- * `bomSubir` existe porque nem toda subida é boa, e fingir que é seria pior
- * que não mostrar nada. Conformidade subindo é bom. Já "bloqueios subindo" é
- * ambíguo: pode ser mais gente circulando, pode ser o sistema pegando o que
- * antes passava, pode ser piora real. Quando o sinal é ambíguo, `bomSubir`
- * fica indefinido e o número sai em cinza — o leitor decide o que significa,
- * em vez de a cor decidir por ele.
- */
-function Variacao({
-  atual,
-  anterior,
-  sufixo = '',
-  bomSubir,
-}: {
-  atual: number | null | undefined;
-  anterior: number | null | undefined;
-  sufixo?: string;
-  bomSubir?: boolean;
-}) {
-  if (atual == null || anterior == null) return null;
-  const delta = Math.round((atual - anterior) * 10) / 10;
-  if (delta === 0) {
-    return <span style={{ color: 'var(--slate-400)' }}>igual ao período anterior</span>;
-  }
-  const subiu = delta > 0;
-  const cor =
-    bomSubir === undefined
-      ? 'var(--slate-500)'
-      : subiu === bomSubir
-        ? 'var(--ok-text)'
-        : 'var(--alerta-text)';
-  return (
-    <span style={{ color: cor }}>
-      {subiu ? '▲' : '▼'} {Math.abs(delta)}
-      {sufixo} vs. período anterior
-    </span>
-  );
-}
-
-/** Título + a frase que diz por que este bloco existe, e o cartão. */
-function Secao({
-  titulo,
-  descricao,
-  children,
-}: {
-  titulo: string;
-  descricao: string;
-  children: ReactNode;
-}) {
-  return (
-    <>
-      <h2>{titulo}</h2>
-      <p
-        style={{
-          color: 'var(--slate-500)',
-          fontSize: 13,
-          margin: '-6px 0 12px',
-          maxWidth: 760,
-          lineHeight: 1.6,
-        }}
-      >
-        {descricao}
-      </p>
-      <div className="cartao" style={{ marginBottom: 24 }}>
-        {children}
-      </div>
-    </>
-  );
-}
 
 export function Painel() {
   const [dias, setDias] = useState(30);

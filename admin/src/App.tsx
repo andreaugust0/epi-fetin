@@ -1,6 +1,7 @@
 import { Navigate, NavLink, Route, Routes } from 'react-router-dom';
 import {
   mdiAccountGroupOutline,
+  mdiChartBoxOutline,
   mdiClipboardTextClockOutline,
   mdiDoorSlidingOpen,
   mdiTabletDashboard,
@@ -13,6 +14,7 @@ import { BarraStatus } from './componentes/BarraStatus';
 import { Icone, ICONE_MARCA } from './componentes/basicos';
 import { Login } from './paginas/Login';
 import { Painel } from './paginas/Painel';
+import { Relatorios } from './paginas/Relatorios';
 import { Verificacoes } from './paginas/Verificacoes';
 import { Pessoas } from './paginas/Pessoas';
 import { Pontos } from './paginas/Pontos';
@@ -20,6 +22,7 @@ import { Dispositivos } from './paginas/Dispositivos';
 
 const LINKS = [
   { para: '/', rotulo: 'Painel', icone: mdiViewDashboardOutline, exato: true },
+  { para: '/relatorios', rotulo: 'Relatórios', icone: mdiChartBoxOutline },
   { para: '/verificacoes', rotulo: 'Verificações', icone: mdiClipboardTextClockOutline },
   { para: '/pessoas', rotulo: 'Pessoas', icone: mdiAccountGroupOutline },
   { para: '/pontos', rotulo: 'Pontos de acesso', icone: mdiDoorSlidingOpen },
@@ -65,6 +68,7 @@ function Moldura() {
         <main className="conteudo">
           <Routes>
             <Route path="/" element={<Painel />} />
+            <Route path="/relatorios" element={<Relatorios />} />
             <Route path="/verificacoes" element={<Verificacoes />} />
             <Route path="/pessoas" element={<Pessoas />} />
             <Route path="/pontos" element={<Pontos />} />
