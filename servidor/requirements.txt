@@ -4,6 +4,11 @@ pydantic==2.10.4
 pydantic-settings==2.7.0
 email-validator==2.2.0
 
+# base de fusos horários para zoneinfo. A imagem python:3.12-slim (Dockerfile)
+# não empacota tzdata do sistema, e Windows nunca tem — sem isto,
+# ZoneInfo(TZ_EXIBICAO) levanta ZoneInfoNotFoundError na exportação de CSV.
+tzdata==2024.2
+
 # banco
 sqlalchemy==2.0.36
 asyncpg==0.30.0
