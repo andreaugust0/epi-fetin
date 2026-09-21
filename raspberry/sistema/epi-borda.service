@@ -32,6 +32,19 @@
 #    isso o `epi_borda` tenta a picamera2 primeiro, que é o certo para câmera
 #    de cabo flat e perda de tempo para webcam.
 #
+# CONFERIR O ENQUADRAMENTO SEM PARAR NADA: acrescente `--previa 8080` ao
+# `ExecStart` e abra `http://IP-DA-PI:8080/previa` no notebook. O serviço
+# segue igual — a prévia não abre a câmera de novo, ela mostra os mesmos
+# frames que o laço já está lendo para o anel, e só codifica JPEG enquanto
+# houver aba aberta.
+#
+#   ExecStart=... -m detectores.hailo /caminho/modelo.hef --camera 0 --previa 8080
+#
+# Isto é ferramenta de instalação: posicione a câmera, marque o chão, e
+# então TIRE a opção e recarregue. É uma câmera apontada para pessoas,
+# servida sem senha na rede local, e deixá-la ligada em operação é
+# exposição sem contrapartida — ninguém fica olhando a portaria o dia todo.
+#
 # Depois:
 #   sudo systemctl daemon-reload
 #   sudo systemctl enable --now epi-borda
@@ -51,6 +64,7 @@ User=pi
 WorkingDirectory=/home/pi/epi-fetin/raspberry
 
 # Hailo-8 + webcam USB. Ajuste o caminho do ambiente e o do .hef.
+# Acrescente `--previa 8080` enquanto estiver posicionando a câmera.
 ExecStart=/home/pi/epi-env/bin/python -m detectores.hailo /home/pi/epi-testes/modelo_epi.hef --camera 0
 
 # Sem Hailo, inferindo na CPU, troque a linha acima por esta:

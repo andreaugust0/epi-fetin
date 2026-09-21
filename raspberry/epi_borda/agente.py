@@ -44,11 +44,19 @@ class Agente:
         *,
         buffer: BufferFrames | None = None,
         codificar_jpeg: Callable[[Any], bytes] | None = None,
+        ao_analisar: Callable[[Any, list[Deteccao]], None] | None = None,
     ) -> None:
         self.cfg = cfg
         self.detector = detector
         self.buffer = buffer or BufferFrames()
         self._codificar_jpeg = codificar_jpeg
+        #: Observador opcional, chamado com (último frame, suas detecções)
+        #: depois de cada inferência. Existe para a prévia de bancada poder
+        #: mostrar o que a verificação enxergou sem rodar o modelo por conta
+        #: própria. Nunca participa da decisão, e o que ele levantar é
+        #: engolido: uma ferramenta de conferência não pode derrubar uma
+        #: verificação.
+        self._ao_analisar = ao_analisar
         self._parando = threading.Event()
         self._atendidas: set[str] = set()
         self._trava_atendidas = threading.Lock()
@@ -151,6 +159,17 @@ class Agente:
         if not amostras:
             log.error("nenhum frame inferido dentro do prazo; não vou responder")
             return
+
+        # O observador vem DEPOIS da inferência e ANTES da votação, com o
+        # último frame analisado e as caixas dele. Note que ele roda na
+        # mesma thread: um observador lento atrasaria a resposta e comeria
+        # o orçamento de prazo, então quem se registra aqui tem de devolver
+        # na hora — a prévia só copia um array e volta.
+        if self._ao_analisar is not None:
+            try:
+                self._ao_analisar(frames[len(amostras) - 1], amostras[-1])
+            except Exception:
+                log.exception("observador de análise falhou; seguindo")
 
         votos = votar(
             amostras,

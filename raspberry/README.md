@@ -170,6 +170,57 @@ mesmo em queda abrupta.
 
 ---
 
+## Ver a câmera sem parar o serviço
+
+A Pi não tem tela e `/dev/video0` só abre uma vez. Com o `epi-borda` de pé,
+nenhum outro processo consegue olhar pela câmera — então a prévia mora
+dentro do próprio serviço:
+
+```
+ExecStart=... -m detectores.hailo /caminho/modelo.hef --camera 0 --previa 8080
+```
+
+```bash
+sudo systemctl daemon-reload && sudo systemctl restart epi-borda
+# no notebook:  http://IP-DA-PI:8080/previa
+```
+
+Ela não abre a câmera de novo: mostra os mesmos frames que o laço já lê
+para o anel. `publicar()` é uma atribuição sob lock, e o JPEG só é gerado
+enquanto houver aba aberta — com o navegador fechado, o laço roda como se
+a opção não existisse.
+
+Com o serviço parado, a mesma tela sai do script avulso:
+
+```bash
+sudo systemctl stop epi-borda
+python3 enquadrar.py
+python3 enquadrar.py --girar 90     # compara com o quadro em pé
+```
+
+### O que as guias dizem
+
+O modelo não recebe os 1280x720: recebe 640x640, e o letterbox reduz o
+frame para 640x360 com **escala 0,5**. Cada pixel na tela vale meio pixel
+para o detector, e 20 px é o piso prático de um YOLO — abaixo disso a caixa
+pisca. Os dois quadrados no canto mostram 20 e 40 px do modelo medidos em
+pixels da tela, para comparar com a luva de verdade em vez de chutar.
+
+Capacete e colete sobram em qualquer distância razoável. Quem decide a
+posição da marcação são **luva e óculos**.
+
+Quando uma verificação de verdade acontece, as caixas dela aparecem por
+alguns segundos, com o lado menor já convertido para pixels do modelo —
+verde acima de 40, laranja entre 20 e 40, vermelho abaixo do piso. São as
+caixas que decidiram, não uma aproximação: a prévia nunca roda o modelo por
+conta própria, justamente para a NPU continuar parada entre verificações.
+
+**Desligue depois de instalar.** É uma câmera apontada para pessoas, servida
+sem senha na rede local. Tire o `--previa` do `ExecStart` quando a câmera
+estiver posicionada.
+
+---
+
 ## Sem hardware nenhum
 
 ```bash
@@ -269,9 +320,12 @@ epi_borda/
 ├── mqtt_cliente.py   paho, LWT, status retido, dedup, reconexão
 ├── agente.py         cmd/capturar → votação → evt/resultado
 ├── evidencia.py      POST /api/v1/evidencias (opcional)
+├── previa.py         a câmera no navegador, com as guias de enquadramento
 └── __main__.py       serviço pronto: câmera + ONNX + agente
 
 detectores/
 ├── onnx_yolo.py      adaptador de exemplo (letterbox, decode v5/v8, NMS)
 └── falso.py          sem câmera e sem modelo
+
+enquadrar.py          a mesma prévia, para quando o serviço está parado
 ```

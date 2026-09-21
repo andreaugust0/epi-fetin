@@ -6,6 +6,7 @@ visão já existe, prefira importar o `Agente` dentro dele — veja o README.
     python -m epi_borda
     python -m epi_borda --mostrar          # janela com as caixas (só no desktop)
     python -m epi_borda --fonte 0          # /dev/video0 em vez da picamera2
+    python -m epi_borda --previa 8080      # a câmera no navegador, sem display
 """
 from __future__ import annotations
 
@@ -83,6 +84,10 @@ def main() -> int:
     p.add_argument("--altura", type=int, default=480)
     p.add_argument("--mostrar", action="store_true",
                    help="abre janela com as caixas (precisa de display)")
+    p.add_argument("--previa", type=int, nargs="?", const=8080, default=None,
+                   metavar="PORTA",
+                   help="serve a câmera no navegador (padrão 8080); não abre "
+                        "a câmera de novo, usa os frames deste laço")
     p.add_argument("--fps-max", type=float, default=10.0)
     args = p.parse_args()
 
@@ -110,13 +115,27 @@ def main() -> int:
                 raise RuntimeError("imencode falhou")
             return buf.tobytes()
 
+    # A prévia entra ANTES do agente porque o agente recebe o observador
+    # dela. Não abre câmera nenhuma: consome os mesmos frames deste laço.
+    previa = None
+    if args.previa is not None:
+        from epi_borda.previa import ServidorPrevia
+
+        previa = ServidorPrevia(args.previa)
+        previa.iniciar()
+
     parar = threading.Event()
     signal.signal(signal.SIGINT, lambda *_: parar.set())
     signal.signal(signal.SIGTERM, lambda *_: parar.set())
 
     intervalo = 1.0 / args.fps_max
     try:
-        with Agente(cfg, detector=detector, codificar_jpeg=codificar) as agente:
+        with Agente(
+            cfg,
+            detector=detector,
+            codificar_jpeg=codificar,
+            ao_analisar=(previa.mostrar_analise if previa else None),
+        ) as agente:
             log.info("pronto. escutando epi/v1/%s/%s/cmd/capturar",
                      cfg.site, cfg.ponto)
             while not parar.is_set():
@@ -131,6 +150,9 @@ def main() -> int:
                 # quando `cmd/capturar` chega.
                 agente.registrar_frame(frame)
 
+                if previa is not None:
+                    previa.publicar(frame, args.fps_max)
+
                 if args.mostrar:
                     # A janela é bancada: aqui, e só aqui, o modelo volta
                     # a rodar a cada frame, porque não há o que desenhar
@@ -144,6 +166,8 @@ def main() -> int:
                 if sobra > 0:
                     time.sleep(sobra)
     finally:
+        if previa is not None:
+            previa.fechar()
         fechar_camera()
 
     log.info("encerrado")

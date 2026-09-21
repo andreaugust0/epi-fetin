@@ -7,6 +7,7 @@ formato que o agente entende.
     python3 -m detectores.hailo ~/epi-testes/modelo_epi.hef
     python3 -m detectores.hailo ~/epi-testes/modelo_epi.hef --camera 2
     python3 -m detectores.hailo ~/epi-testes/modelo_epi.hef --mostrar
+    python3 -m detectores.hailo ~/epi-testes/modelo_epi.hef --previa 8080
 
 Duas coisas que este arquivo faz e que valem ser ditas em voz alta:
 
@@ -132,6 +133,10 @@ def main() -> int:
                    help="índice de /dev/video (padrão: o do epi_hailo.py)")
     p.add_argument("--mostrar", action="store_true",
                    help="abre janela com as caixas (precisa de display)")
+    p.add_argument("--previa", type=int, nargs="?", const=8080, default=None,
+                   metavar="PORTA",
+                   help="serve a camera no navegador (padrao 8080); o servico "
+                        "continua normal, sem abrir a camera duas vezes")
     p.add_argument("--conf", type=float, default=None)
     p.add_argument("--iou", type=float, default=None)
     p.add_argument("--fps-max", type=float, default=15.0)
@@ -163,15 +168,30 @@ def main() -> int:
                 raise RuntimeError("imencode falhou")
             return buf.tobytes()
 
+    # A prévia entra ANTES do agente porque o agente recebe o observador
+    # dela. Não abre câmera nenhuma: consome os mesmos frames do laço.
+    previa = None
+    if args.previa is not None:
+        from epi_borda.previa import ServidorPrevia
+
+        previa = ServidorPrevia(args.previa)
+        previa.iniciar()
+
     parar = threading.Event()
     signal.signal(signal.SIGINT, lambda *_: parar.set())
     signal.signal(signal.SIGTERM, lambda *_: parar.set())
 
     intervalo = 1.0 / args.fps_max
     t0, n = time.time(), 0
+    fps_atual = 0.0
 
     try:
-        with Agente(cfg, detector=detector, codificar_jpeg=codificar) as agente:
+        with Agente(
+            cfg,
+            detector=detector,
+            codificar_jpeg=codificar,
+            ao_analisar=(previa.mostrar_analise if previa else None),
+        ) as agente:
             log.info("escutando epi/v1/%s/%s/cmd/capturar", cfg.site, cfg.ponto)
             while not parar.is_set():
                 inicio = time.monotonic()
@@ -186,10 +206,16 @@ def main() -> int:
                 # chega — e só então.
                 agente.registrar_frame(frame)
 
+                # Depois do anel, nunca antes: se algo aqui levantasse, a
+                # verificação já teria o frame guardado de qualquer jeito.
+                if previa is not None:
+                    previa.publicar(frame, fps_atual)
+
                 n += 1
                 if n % 60 == 0:
+                    fps_atual = n / (time.time() - t0)
                     log.info("%.1f fps · %d frames no anel",
-                             n / (time.time() - t0), len(agente.buffer))
+                             fps_atual, len(agente.buffer))
 
                 if args.mostrar:
                     # A janela é ferramenta de bancada, não parte do
@@ -218,6 +244,8 @@ def main() -> int:
                 if sobra > 0:
                     time.sleep(sobra)
     finally:
+        if previa is not None:
+            previa.fechar()
         cap.release()
         detector.fechar()
         if args.mostrar:
