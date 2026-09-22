@@ -300,6 +300,12 @@ class Verificacao(Base):
                 "status = 'REPROVADA'"  # índice parcial: relatório de não conformidade
             ),
         ),
+        # A área de Relatórios e Analytics filtra por período em praticamente
+        # toda consulta, muitas vezes sem ponto nem pessoa — os dois índices
+        # compostos acima não servem bem esse caso porque o período não é a
+        # coluna líder. Sem este índice, um filtro só de data faz table scan
+        # à medida que o histórico de verificações cresce.
+        Index("ix_verif_iniciada", "iniciada_em"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True)

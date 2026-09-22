@@ -107,6 +107,130 @@ export interface EpisFaltantes {
   }[];
 }
 
+// -------------------------------------------------- relatórios e analytics
+/**
+ * Filtros globais da página de Relatórios. Todos opcionais — omitir um
+ * filtro no objeto (ou passar string vazia) equivale a "todos".
+ */
+export interface FiltrosAnalytics {
+  /** Data pura `yyyy-mm-dd`, sem hora nem fuso — ver `paraConsulta`. */
+  desde?: string;
+  /** Idem `desde`; ambas inclusive no calendário local do servidor. */
+  ate?: string;
+  ponto_id?: number;
+  situacao?: string;
+  setor?: string;
+  tipo_epi?: string;
+  pessoa_id?: number;
+  versao_modelo?: string;
+}
+
+export interface AnalyticsOpcoes {
+  pontos: { id: number; nome: string }[];
+  tipos_epi: { codigo: string; rotulo: string }[];
+  setores: string[];
+  versoes_modelo: string[];
+  situacoes: string[];
+}
+
+export interface AnalyticsMetricas {
+  verificacoes: number;
+  aprovadas: number;
+  bloqueios: number;
+  pessoas_barradas: number;
+  liberacoes_manuais: number;
+  taxa_conformidade: number | null;
+  latencia_media_ms: number | null;
+}
+
+export interface AnalyticsIndicadores {
+  atual: AnalyticsMetricas;
+  anterior: AnalyticsMetricas | null;
+}
+
+export interface AnalyticsTendencia {
+  dias: {
+    dia: string;
+    aprovadas: number;
+    bloqueios: number;
+    expiradas: number;
+    erros: number;
+    total: number;
+    taxa_conformidade: number | null;
+  }[];
+}
+
+export interface AnalyticsEpisAusentes {
+  itens: {
+    epi: string;
+    rotulo: string;
+    total: number;
+    faltas: number;
+    pct_falta: number | null;
+  }[];
+}
+
+export interface AnalyticsConformidadePorPonto {
+  pontos: {
+    ponto_id: number;
+    nome: string;
+    total: number;
+    aprovadas: number;
+    taxa_conformidade: number | null;
+  }[];
+}
+
+export interface AnalyticsHorarios {
+  fuso: string;
+  celulas: {
+    dia_semana: number;
+    hora: number;
+    total: number;
+    bloqueios: number;
+    taxa_bloqueio: number | null;
+  }[];
+}
+
+export interface AnalyticsSetores {
+  itens: {
+    setor: string;
+    total: number;
+    bloqueios: number;
+    taxa_conformidade: number | null;
+  }[];
+}
+
+export interface AnalyticsDesempenho {
+  latencia_media_ms: number | null;
+  latencia_dias: { dia: string; latencia_media_ms: number | null }[];
+  por_versao: {
+    versao_modelo: string;
+    total: number;
+    taxa_conformidade: number | null;
+    latencia_media_ms: number | null;
+  }[];
+}
+
+export interface AnalyticsItemTabela {
+  id: string;
+  iniciada_em: string;
+  pessoa_nome: string | null;
+  pessoa_matricula: string | null;
+  setor: string | null;
+  ponto: string;
+  status: string;
+  motivo_falha: string | null;
+  epis_detectados: string[];
+  epis_ausentes: string[];
+  latencia_ms: number | null;
+  versao_modelo: string | null;
+}
+
+export interface AnalyticsPaginaTabela {
+  total: number;
+  itens: AnalyticsItemTabela[];
+}
+
 const CHAVE_TOKEN = 'epi-admin:token';
 
 export const guardarToken = (t: string) => localStorage.setItem(CHAVE_TOKEN, t);
@@ -232,6 +356,59 @@ async function enviarArquivo<T>(caminho: string, campo: string, arquivo: File): 
   return dados as T;
 }
 
+/**
+ * Baixa um arquivo protegido por Bearer token.
+ *
+ * Existe separado de `chamar` porque um `<a href>` comum não carrega
+ * `Authorization` — o navegador faria a requisição sem token e a API
+ * devolveria 401. Em vez disso: busca com `fetch` autenticado, vira `Blob`,
+ * e só então um link temporário dispara o "Salvar como" do navegador.
+ */
+async function baixarArquivo(
+  caminho: string,
+  params?: Record<string, string | number | boolean | undefined | null>,
+): Promise<void> {
+  const url = new URL(`/api/v1${caminho}`, window.location.origin);
+  if (params) {
+    for (const [k, v] of Object.entries(params)) {
+      if (v !== undefined && v !== null && v !== '') url.searchParams.set(k, String(v));
+    }
+  }
+
+  const headers: Record<string, string> = {};
+  const token = lerToken();
+  if (token) headers.Authorization = `Bearer ${token}`;
+
+  let resposta: Response;
+  try {
+    resposta = await fetch(url, { headers });
+  } catch {
+    throw new ErroApi(0, 'Não foi possível falar com o servidor. Ele está no ar?');
+  }
+
+  if (!resposta.ok) {
+    if (resposta.status === 401) {
+      limparToken();
+      window.dispatchEvent(new Event(SESSAO_EXPIRADA));
+    }
+    const texto = await resposta.text();
+    const dados = texto ? JSON.parse(texto) : null;
+    throw new ErroApi(resposta.status, mensagemDeErro(resposta.status, dados), dados);
+  }
+
+  const disposicao = resposta.headers.get('Content-Disposition') ?? '';
+  const nome = /filename="?([^"]+)"?/.exec(disposicao)?.[1] ?? 'exportacao.csv';
+  const blob = await resposta.blob();
+  const blobUrl = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = blobUrl;
+  a.download = nome;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(blobUrl);
+}
+
 // ------------------------------------------------------------------ rotas
 export const api = {
   login: (email: string, senha: string) =>
@@ -311,4 +488,29 @@ export const api = {
     chamar<Reincidencia>('/relatorios/reincidencia', { params: { dias } }),
   liberacoesManuais: (dias: number) =>
     chamar<LiberacoesManuais>('/relatorios/liberacoes-manuais', { params: { dias } }),
+
+  // ------------------------------------------------- relatórios e analytics
+  analyticsOpcoes: () => chamar<AnalyticsOpcoes>('/relatorios/analytics/opcoes'),
+  analyticsIndicadores: (f: FiltrosAnalytics) =>
+    chamar<AnalyticsIndicadores>('/relatorios/analytics/indicadores', { params: { ...f } }),
+  analyticsTendencia: (f: FiltrosAnalytics) =>
+    chamar<AnalyticsTendencia>('/relatorios/analytics/tendencia', { params: { ...f } }),
+  analyticsEpisAusentes: (f: FiltrosAnalytics) =>
+    chamar<AnalyticsEpisAusentes>('/relatorios/analytics/epis-ausentes', { params: { ...f } }),
+  analyticsConformidadePorPonto: (f: FiltrosAnalytics) =>
+    chamar<AnalyticsConformidadePorPonto>('/relatorios/analytics/conformidade-por-ponto', {
+      params: { ...f },
+    }),
+  analyticsHorarios: (f: FiltrosAnalytics) =>
+    chamar<AnalyticsHorarios>('/relatorios/analytics/horarios', { params: { ...f } }),
+  analyticsSetores: (f: FiltrosAnalytics) =>
+    chamar<AnalyticsSetores>('/relatorios/analytics/setores', { params: { ...f } }),
+  analyticsDesempenho: (f: FiltrosAnalytics) =>
+    chamar<AnalyticsDesempenho>('/relatorios/analytics/desempenho', { params: { ...f } }),
+  analyticsTabela: (f: FiltrosAnalytics, limite: number, offset: number) =>
+    chamar<AnalyticsPaginaTabela>('/relatorios/analytics/tabela', {
+      params: { ...f, limite, offset },
+    }),
+  analyticsExportarCsv: (f: FiltrosAnalytics) =>
+    baixarArquivo('/relatorios/analytics/exportar', { ...f }),
 };
